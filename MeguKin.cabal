@@ -1,4 +1,4 @@
-cabal-version: 2.4
+cabal-version: 3.4
 name: MeguKin
 version: 1.0.0.2
 license: BSD-3-Clause
