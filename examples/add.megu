@@ -1,0 +1,26 @@
+Module Add(add1,add2,add3,add4) where
+
+add1 :: uint64 -> uint64 -> uint64
+add1 x = \ y -> 
+                x+y
+
+add2 :: uint64 -> uint64 -> uint64
+add2 = \ x -> 
+          \ y -> x + y
+
+
+add3 :: uint64 -> uint64-> uint64
+add3 = let sum x y = 
+                    x + y 
+       in
+       sum 
+
+add4 :: uint64 -> uint64 -> uint64
+add4 = let sum x = 
+                  let 
+                      sum2 y =
+                               y
+                  in
+                      sum2
+       in
+       x + sum2

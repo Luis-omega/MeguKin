@@ -1,0 +1,17 @@
+Module Factorial(fac1) where
+
+fac1 :: uint64 -> uint64
+fac1 n = if n == 0 then 
+            1
+         else 
+          n * (fac1 n)
+
+fac2 :: uint64 -> uint64
+fac2 n = fac2Aux n 1 
+
+fac2Aux :: uint64 -> uint64 -> uint64
+fac2Aux n acc = if n == 0 
+         then 
+          acc
+         else 
+          fac(n-1,n*acc)

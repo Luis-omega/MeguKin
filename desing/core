@@ -1,0 +1,59 @@
+
+
+primitiveType = bool | u8 | u32 | u64 | i64 | unicodeCodePoint | String | double | tuples | records
+
+primitveFunction = + | - | * | / | and | or | % | head | cons ...
+
+type = primitiveTypes 
+  | "forall" variable "." type  
+  | variable
+  | type type
+  | "recursive" variable "." type
+  | type "->" type
+
+primitiveValue = true | false | integers and unsigned integers | unicodeCodePoint | Strings | doubles
+
+expression = primitiveValue 
+  | "top" variable patternMatch "=" expression
+  | "\" variable "=" expression
+  | "let" patternMatch "="  expression in expression
+  | "case" expression of [patternMatch -> expression]
+  | variable
+  | (expression : type)
+
+
+-- Type substitution 
+
+FreeT primitiveType = {}
+FreeT "forall" v "." t = (FreeT t) \ {v}
+FreeT variable = variable
+FreeT t1 t2 = (FreeT t1) U (Freet t2) 
+FreeT "recursive" v "." t = (FreeT t) \ {v}
+FreeT t1 "->" t2 = (FreeT t1) U (FreeT t2)
+
+primitiveType[t1\t2] = primitiveType 
+("forall" v "." t)[t1\t2] = if v \= t2 then ("forall" v "." (t[t1\t2])) else ("forall" v "." (t[t1\t2]))
+
+variable = variable
+t1 t2 = (FreeT t1) U (Freet t2) 
+"recursive" v "." t = (FreeT t) \ {v}
+t1 "->" t2 = (FreeT t1) U (FreeT t2)
+
+
+
+-- Types
+
+primitiveTypeRule = 
+  _____________________________________
+   . |- primitiveValue : primitiveType 
+
+introductionTypeRule = 
+  _____________________________________
+   G, e : t |- e : t
+
+typeApplication :
+    G |- e : ("forall" t1 . t2) t3    t3 not in (FreeT "froall" t1 . t2)
+  ______________________________________________________________________
+    G |- e : t2[t3/t1]
+
+

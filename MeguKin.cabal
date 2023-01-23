@@ -40,11 +40,17 @@ common defaults
     NamedFieldPuns
     RecordWildCards
     ScopedTypeVariables
-  build-depends: base >= 4.2 && < 5
+  build-depends: 
+    base >= 4.2 && < 5
+    , text
+    , megaparsec
 
 library
   import: defaults
   hs-source-dirs: src
+  exposed-modules: 
+    MeguKin.Stream.Types
+    MeguKin.Lexer.Types
 
 executable main
   import: defaults
@@ -57,7 +63,8 @@ test-suite test
   hs-source-dirs: test
   main-is: Main.hs
   build-depends:
-    sandwich
+    --sandwich
+    --sydtest
     -- I would like to use `sydtest` but `nix develop` keeps failing
 
 
