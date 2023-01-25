@@ -1,21 +1,9 @@
 module MeguKin.Parser.Types (
-  Token (
-    ModuleToken,
-    ImportToken,
-    AsToken,
-    EqualToken,
-    TypeToken,
-    IdentifierToken,
-    LetToken,
-    LeftParenToken,
-    RightParenToken,
-    LeftArrowToken,
-    RightArrowToken,
-    LambdaStartToken,
-    InToken
-  ),
   Parser,
   Identifier (Identifier),
+  SimpleIdentifier (SimpleIdentifier),
+  TopLevelDefinition (ModuleDeclaration),
+  ExportDeclaration (DataTypeExport, DataClassExport),
 ) where
 
 import Data.List.NonEmpty (NonEmpty)
@@ -24,19 +12,14 @@ import Text.Megaparsec (Parsec)
 
 type Parser a = Parsec String String a
 
-newtype Identifier = Identifier (NonEmpty String)
+-- | Do import the constructor! only allowed in Parsers.hs
+newtype SimpleIdentifier = SimpleIdentifier String
 
-data Token
-  = ModuleToken
-  | ImportToken
-  | AsToken
-  | EqualToken
-  | TypeToken
-  | LetToken
-  | LeftParenToken
-  | RightParenToken
-  | LeftArrowToken
-  | RightArrowToken
-  | InToken
-  | LambdaStartToken
-  | IdentifierToken Identifier
+newtype Identifier = Identifier (NonEmpty SimpleIdentifier)
+
+data TopLevelDefinition
+  = ModuleDeclaration Identifier [ExportDeclaration]
+
+data ExportDeclaration
+  = DataTypeExport SimpleIdentifier [SimpleIdentifier]
+  | DataClassExport SimpleIdentifier [SimpleIdentifier]
