@@ -44,13 +44,14 @@ common defaults
     base >= 4.2 && < 5
     , text
     , megaparsec
+    , parser-combinators
 
 library
   import: defaults
   hs-source-dirs: src
   exposed-modules: 
-    MeguKin.Stream.Types
-    MeguKin.Lexer.Types
+    MeguKin.Parser.Types
+    MeguKin.Parser.Parsers
 
 executable main
   import: defaults
