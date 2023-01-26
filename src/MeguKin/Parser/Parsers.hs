@@ -1,21 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module MeguKin.Parser.Parsers (topLevel) where
+module MeguKin.Parser.Parsers (
+  topLevel,
+  simpleIdentifier,
+  longIdentifier,
+  moduleDeclaration,
+  dataTypeExport,
+  classExport,
+) where
 
-import Control.Applicative (Applicative (pure), (<|>))
+import Control.Applicative (Alternative (empty), Applicative (pure), (<|>))
 import Control.Monad.Combinators.NonEmpty (sepBy1)
-import Data.Char (isLetter)
+import Data.Bool (Bool)
+import Data.Char (Char, isLetter)
 import Data.Functor (($>), (<$>))
 import Data.Maybe (Maybe (Just))
-import Data.Monoid (Monoid (mempty))
 import Data.String (String)
-import Text.Megaparsec (MonadParsec (takeWhile1P), between, satisfy, sepBy)
+import Text.Megaparsec (MonadParsec (takeWhile1P), between, sepBy)
 import Text.Megaparsec.Char (space1)
 import qualified Text.Megaparsec.Char.Lexer as Lexer
-import Prelude (($), (.), (==), (||))
+import Prelude (($), (==), (||))
 
 import MeguKin.Parser.Types (
-  ExportDeclaration (DataClassExport, DataTypeExport),
+  ExportDeclaration (ClassExport, DataTypeExport),
   Identifier (Identifier),
   Parser,
   SimpleIdentifier (SimpleIdentifier),
@@ -23,22 +30,20 @@ import MeguKin.Parser.Types (
  )
 
 consumeSpaces :: Parser ()
-consumeSpaces = Lexer.space space1 mempty mempty
+consumeSpaces = Lexer.space space1 empty empty
 
 consumeNonNewLineSpaces :: Parser ()
 consumeNonNewLineSpaces =
   Lexer.space
-    (satisfy isSimpleSpace $> ())
-    mempty
-    mempty
+    (takeWhile1P (Just "non new line space") isSimpleSpace $> ())
+    empty
+    empty
  where
+  isSimpleSpace :: Char -> Bool
   isSimpleSpace x = x == ' ' || x == '\t'
 
 -- lexeme :: Parser a -> Parser a
 -- lexeme = Lexer.lexeme consumeNonNewLineSpaces
-
-simpleSymbol :: String -> Parser String
-simpleSymbol = Lexer.symbol consumeNonNewLineSpaces
 
 symbol :: String -> Parser ()
 symbol str = Lexer.symbol consumeNonNewLineSpaces str $> ()
@@ -53,6 +58,10 @@ rparen :: Parser ()
 rparen = symbol ")"
 comma :: Parser ()
 comma = symbol ","
+dot :: Parser ()
+dot = symbol "."
+class_ :: Parser ()
+class_ = symbol "class"
 
 -- import_ :: Parser ()
 -- import_ = symbol "import"
@@ -72,16 +81,12 @@ comma = symbol ","
 -- in_ = symbol "in"
 -- lambdaStart :: Parser ()
 -- lambdaStart = symbol "\\"
--- class_ :: Parser ()
--- class_ = symbol "class"
 
 simpleIdentifier :: Parser SimpleIdentifier
 simpleIdentifier = SimpleIdentifier <$> takeWhile1P (Just "IdentifierCharacter") isLetter
 
 longIdentifier :: Parser Identifier
-longIdentifier = do
-  value <- sepBy1 simpleIdentifier (simpleSymbol ".")
-  pure . Identifier $ value
+longIdentifier = Identifier <$> sepBy1 simpleIdentifier dot
 
 topLevel :: Parser TopLevelDefinition
 topLevel = moduleDeclaration
@@ -90,7 +95,7 @@ moduleDeclaration :: Parser TopLevelDefinition
 moduleDeclaration = do
   _ <- Lexer.nonIndented consumeSpaces module_
   moduleName <- longIdentifier
-  exports <- between lparen rparen (sepBy (dataTypeExport <|> classExport) comma)
+  exports <- between lparen rparen (sepBy (classExport <|> dataTypeExport) comma)
   _ <- where_
   pure $ ModuleDeclaration moduleName exports
 
@@ -102,9 +107,10 @@ dataTypeExport = do
 
 classExport :: Parser ExportDeclaration
 classExport = do
+  _ <- class_
   className <- simpleIdentifier
   exportedValues <- between lparen rparen (sepBy simpleIdentifier comma)
-  pure $ DataClassExport className exportedValues
+  pure $ ClassExport className exportedValues
 
 -- parseLet :: Parser SugaredExpression
 -- parseLet = Lexer.indentBlock consumeSpaces p *> in_

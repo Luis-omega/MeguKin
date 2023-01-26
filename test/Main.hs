@@ -1,6 +1,12 @@
 module Main (main) where
 
-import System.IO (IO, putStrLn)
+import qualified Test.MeguKin.Parser as Parser
+
+import System.IO (IO ())
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
 main :: IO ()
-main = putStrLn "Hello, World!"
+main = defaultMain tests
+
+tests :: TestTree
+tests = testGroup "Tests" [Parser.tests]

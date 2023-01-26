@@ -24,47 +24,61 @@ Description:
 -- flag threaded
 --   default: False
 
-common defaults
+common ghc-options
   ghc-options: 
     -Werror 
     -Wall 
-    -Wunused-packages 
+    -- -Wunused-packages 
     -Wmissing-import-lists 
     -Wmissing-export-lists 
     -Wmissing-signatures 
     -Wname-shadowing 
     -fforce-recomp 
     -- -fno-code
+
+common common-extensions
   default-extensions: 
     NoImplicitPrelude
     NamedFieldPuns
     RecordWildCards
     ScopedTypeVariables
-  build-depends: 
-    base >= 4.2 && < 5
-    , text
-    , megaparsec
-    , parser-combinators
 
 library
-  import: defaults
+  import: common-extensions
+  import: ghc-options
   hs-source-dirs: src
   exposed-modules: 
-    MeguKin.Parser.Types
     MeguKin.Parser.Parsers
+    MeguKin.Parser.Types
+  build-depends: 
+    base >= 4.2 && < 5
+    , megaparsec
+    , parser-combinators
+    , QuickCheck
+    , void
 
 executable main
-  import: defaults
+  import: common-extensions
+  import: ghc-options
   hs-source-dirs: app
   main-is: Main.hs
 
 test-suite test
-  import: defaults
+  import: common-extensions
+  import: ghc-options
   type:exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: Main.hs
+  other-modules:
+    Test.MeguKin.Parser
   build-depends:
-    --sandwich
+    MeguKin
+    ,base >= 4.2 && < 5
+    ,tasty
+    ,tasty-quickcheck
+    ,QuickCheck
+    ,megaparsec
+    -- sandwich
     --sydtest
     -- I would like to use `sydtest` but `nix develop` keeps failing
 
