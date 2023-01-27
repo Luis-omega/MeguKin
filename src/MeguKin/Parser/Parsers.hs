@@ -16,7 +16,7 @@ import Data.Char (Char, isLetter)
 import Data.Functor (($>), (<$>))
 import Data.Maybe (Maybe (Just))
 import Data.String (String)
-import Text.Megaparsec (MonadParsec (takeWhile1P), between, sepBy)
+import Text.Megaparsec (MonadParsec (takeWhile1P, takeWhileP), between, satisfy, sepBy)
 import Text.Megaparsec.Char (space1)
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 import Prelude (($), (==), (||))
@@ -48,6 +48,9 @@ consumeNonNewLineSpaces =
 symbol :: String -> Parser ()
 symbol str = Lexer.symbol consumeNonNewLineSpaces str $> ()
 
+symbolStripingNewLines :: String -> Parser ()
+symbolStripingNewLines str = Lexer.symbol consumeSpaces str $> ()
+
 module_ :: Parser ()
 module_ = symbol "module"
 where_ :: Parser ()
@@ -57,7 +60,10 @@ lparen = symbol "("
 rparen :: Parser ()
 rparen = symbol ")"
 comma :: Parser ()
-comma = symbol ","
+comma = symbolStripingNewLines ","
+
+-- commaNoLineBreaks :: Parser ()
+-- commaNoLineBreaks = symbol ","
 dot :: Parser ()
 dot = symbol "."
 class_ :: Parser ()
@@ -83,7 +89,10 @@ class_ = symbol "class"
 -- lambdaStart = symbol "\\"
 
 simpleIdentifier :: Parser SimpleIdentifier
-simpleIdentifier = SimpleIdentifier <$> takeWhile1P (Just "IdentifierCharacter") isLetter
+simpleIdentifier = do
+  first <- satisfy isLetter
+  remain <- takeWhileP (Just "IdentifierCharacter") isLetter
+  pure (SimpleIdentifier (first : remain))
 
 longIdentifier :: Parser Identifier
 longIdentifier = Identifier <$> sepBy1 simpleIdentifier dot

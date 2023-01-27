@@ -10,7 +10,7 @@ module MeguKin.Parser.Types (
   genModuleDeclaration,
 ) where
 
-import Control.Applicative ((<*>))
+import Control.Applicative (Applicative (pure), (<*>))
 import Data.Char (isLetter)
 import Data.Functor ((<$>))
 import qualified Data.List as List
@@ -24,7 +24,7 @@ import Test.QuickCheck (
   Arbitrary (arbitrary, shrink),
   Gen,
   frequency,
-  listOf1,
+  listOf,
   suchThat,
  )
 import Text.Megaparsec (Parsec)
@@ -42,7 +42,10 @@ instance Arbitrary SimpleIdentifier where
   arbitrary = SimpleIdentifier <$> generator
    where
     generator :: Gen String
-    generator = listOf1 $ suchThat arbitrary isLetter
+    generator = do
+      first <- suchThat arbitrary isLetter
+      remain <- listOf $ suchThat arbitrary isLetter
+      pure (first : remain)
 
   shrink _ = SimpleIdentifier . (: []) <$> "abcdefghijklmnopqrstuvwxyz"
 

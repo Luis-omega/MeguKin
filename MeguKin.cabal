@@ -78,6 +78,7 @@ test-suite test
     ,tasty-quickcheck
     ,QuickCheck
     ,megaparsec
+    ,tagged
     -- sandwich
     --sydtest
     -- I would like to use `sydtest` but `nix develop` keeps failing
