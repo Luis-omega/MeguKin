@@ -1,4 +1,4 @@
-# MeguKing
+# MeguKin
 
 A Haskell like functional language with row types that compiles to python.
 
