@@ -77,7 +77,6 @@ test-suite test
     ,megaparsec
     ,tagged
     ,directory
-    ,hspec >=2.8.5 && <2.8.6
     -- sandwich
     --sydtest
     -- I would like to use `sydtest` but `nix develop` keeps failing
