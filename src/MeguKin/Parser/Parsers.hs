@@ -9,7 +9,7 @@ module MeguKin.Parser.Parsers (
   classExport,
 ) where
 
-import Control.Applicative (Alternative (empty), Applicative (pure), (<|>))
+import Control.Applicative (Alternative (empty), Applicative (pure), (*>), (<*), (<|>))
 import Control.Monad.Combinators.NonEmpty (sepBy1)
 import Data.Bool (Bool)
 import Data.Char (Char, isLetter)
@@ -91,8 +91,10 @@ class_ = symbol "class"
 simpleIdentifier :: Parser SimpleIdentifier
 simpleIdentifier = do
   first <- satisfy isLetter
-  remain <- takeWhileP (Just "IdentifierCharacter") isLetter
+  remain <- takeWhileP (Just "IdentifierCharacter") predicate
   pure (SimpleIdentifier (first : remain))
+ where
+  predicate x = isLetter x || x == '_'
 
 longIdentifier :: Parser Identifier
 longIdentifier = Identifier <$> sepBy1 simpleIdentifier dot
@@ -104,21 +106,26 @@ moduleDeclaration :: Parser TopLevelDefinition
 moduleDeclaration = do
   _ <- Lexer.nonIndented consumeSpaces module_
   moduleName <- longIdentifier
-  exports <- between lparen rparen (sepBy (classExport <|> dataTypeExport) comma)
+  exports <-
+    between
+      lparen
+      (consumeSpaces <* rparen *> consumeSpaces)
+      (sepBy (classExport <|> dataTypeExport) comma)
+  _ <- consumeSpaces
   _ <- where_
   pure $ ModuleDeclaration moduleName exports
 
 dataTypeExport :: Parser ExportDeclaration
 dataTypeExport = do
   typeName <- simpleIdentifier
-  exportedValues <- between lparen rparen (sepBy simpleIdentifier comma)
+  exportedValues <- between lparen rparen (sepBy simpleIdentifier comma) <|> pure []
   pure $ DataTypeExport typeName exportedValues
 
 classExport :: Parser ExportDeclaration
 classExport = do
   _ <- class_
   className <- simpleIdentifier
-  exportedValues <- between lparen rparen (sepBy simpleIdentifier comma)
+  exportedValues <- between lparen rparen (sepBy simpleIdentifier comma) <|> pure []
   pure $ ClassExport className exportedValues
 
 -- parseLet :: Parser SugaredExpression

@@ -77,7 +77,7 @@ instance ParserShow TopLevelDefinition where
   parserShow (ModuleDeclaration moduleName exports) =
     "module " <> parserShow moduleName <> "("
       <> List.intercalate "," (parserShow <$> exports)
-      <> ") where"
+      <> "\n) \nwhere"
 
 data ExportDeclaration
   = DataTypeExport SimpleIdentifier [SimpleIdentifier]
