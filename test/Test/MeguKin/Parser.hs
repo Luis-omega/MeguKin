@@ -17,57 +17,82 @@ import MeguKin.Parser.Types (
   genModuleDeclaration,
  )
 
+import Control.Applicative (Applicative (pure), (<*>))
+import Data.Char (isSpace)
 import Data.Either (Either (Left, Right))
 import Data.Functor ((<$>))
 import Data.Monoid ((<>))
-import Prelude (Eq, FilePath, Show, String, filter, not, readFile, show, (.), (==))
+import Data.Traversable (sequence)
+import System.Directory (listDirectory)
+import System.IO (IO, print)
+import Prelude (
+  Eq,
+  FilePath,
+  Show,
+  String,
+  filter,
+  fst,
+  not,
+  readFile,
+  show,
+  snd,
+  ($),
+  (.),
+  (==),
+ )
 
-import Data.Char (isSpace)
-import Data.Data (Typeable)
 import Data.Tagged (Tagged (Tagged))
 import Test.QuickCheck (Arbitrary (arbitrary), Gen)
 import qualified Test.QuickCheck.Property as Property
 import Test.Tasty (TestName, TestTree, testGroup)
-import Test.Tasty.Providers (IsTest (run, testOptions), Result, singleTest, testFailed, testPassed)
+import Test.Tasty.Providers (
+  IsTest (run, testOptions),
+  Result,
+  singleTest,
+  testFailed,
+  testPassed,
+ )
 import Test.Tasty.QuickCheck (testProperty)
 import Text.Megaparsec (errorBundlePretty, parse)
+import Type.Reflection (Typeable)
 
-tests :: TestTree
+tests :: IO TestTree
 tests =
-  testGroup
-    "Parser"
-    [ arbitraryTest
-    , fixturesTest
-    ]
+  testGroup "Parser"
+    <$> sequence
+      [ arbitraryTest
+      , fixturesTest
+      ]
 
-fixturesTest :: TestTree
+fixturesTest :: IO TestTree
 fixturesTest =
-  testGroup
-    "Fixtures RoundTrip"
-    [ makeStripedSpaceTest
-        "moduleDeclaration"
-        (makePath "ModuleDeclaration")
-        moduleDeclaration
-    ]
+  testGroup "Fixtures RoundTrip"
+    <$> sequence
+      [ internalTestWithFolder
+          "moduleDeclaration"
+          moduleDeclaration
+          (makePath "ModuleDeclaration/")
+      ]
  where
   makePath name = "examples/Parser/" <> name
 
-arbitraryTest :: TestTree
+arbitraryTest :: IO TestTree
 arbitraryTest =
-  testGroup
-    "Arbitrary RoundTrip"
-    [ makeRoundTripTest "simpleIdentifier" simpleIdentifier
-    , makeRoundTripTest "identifier" longIdentifier
-    , makeRoundTripTestWithGen "classExport" classExport genClassExport
-    , makeRoundTripTestWithGen
-        "dataTypeExport"
-        dataTypeExport
-        genDataTypeExport
-    , makeRoundTripTestWithGen
-        "moduleDeclaration"
-        moduleDeclaration
-        genModuleDeclaration
-    ]
+  pure $
+    testGroup
+      "Arbitrary RoundTrip"
+      [ makeRoundTripTest "simpleIdentifier" simpleIdentifier
+      , makeRoundTripTest "identifier" longIdentifier
+      , makeRoundTripTestWithGen "classExport" classExport genClassExport
+      , makeRoundTripTestWithGen
+          "dataTypeExport"
+          dataTypeExport
+          genDataTypeExport
+      , makeRoundTripTestWithGen
+          "moduleDeclaration"
+          moduleDeclaration
+          genModuleDeclaration
+      ]
 
 makeRoundTripTest ::
   forall a.
@@ -138,17 +163,64 @@ makeStripedSpaceTest ::
   forall a.
   ParserShow a =>
   TestName ->
-  FilePath ->
   Parser a ->
+  FilePath ->
   TestTree
-makeStripedSpaceTest name path parser =
+makeStripedSpaceTest name parser path =
   singleTest
     name
-    (TestWithExternalFile path (compareWithoutSpaces parser))
+    (TestWithFile path (compareWithoutSpaces parser))
 
-data TestWithExternalFile = TestWithExternalFile FilePath (String -> Result)
+internalTestWithFolder ::
+  forall a.
+  ParserShow a =>
+  TestName ->
+  Parser a ->
+  FilePath ->
+  IO TestTree
+internalTestWithFolder name parser path =
+  let allFiles = getFolderTest path
+      getPositive = fst <$> allFiles
+      getNegative = snd <$> allFiles
+      positiveTree = (<$>) (makeTest "Positives/") <$> getPositive
+      negativeTree = (<$>) (makeTest "Negatives/") <$> getNegative
+      positiveGroup = (: []) . testGroup "positive" <$> positiveTree
+      negativeGroup = (: []) . testGroup "negative" <$> negativeTree
+   in do
+        names <- allFiles
+        print names
+        testGroup name <$> ((<>) <$> positiveGroup <*> negativeGroup)
+ where
+  makeTest :: String -> FilePath -> TestTree
+  makeTest cas fileName =
+    makeStripedSpaceTest
+      fileName
+      parser
+      ( path <> cas
+          <> fileName
+      )
+
+type PositiveFiles = [FilePath]
+type NegativeFiles = [FilePath]
+
+getFolderTest ::
+  FilePath ->
+  IO (PositiveFiles, NegativeFiles)
+getFolderTest path = (,) <$> positiveFiles <*> negativeFiles
+ where
+  makePath :: FilePath -> FilePath
+  makePath relativePath = path <> relativePath
+
+  positiveFiles :: IO [FilePath]
+  positiveFiles = listDirectory $ makePath "Positives/"
+
+  negativeFiles :: IO [FilePath]
+  negativeFiles = listDirectory $ makePath "Negatives/"
+
+data TestWithExternal
+  = TestWithFile FilePath (String -> Result)
   deriving (Typeable)
 
-instance IsTest TestWithExternalFile where
-  run _ (TestWithExternalFile path test) _ = test <$> readFile path
+instance IsTest TestWithExternal where
+  run _ (TestWithFile path test) _ = test <$> readFile path
   testOptions = Tagged []

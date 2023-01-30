@@ -9,7 +9,7 @@ maintainer: Luis Alberto Díaz Díaz <73986926+Luis-omega@users.noreply.github.c
 bug-reports: 73986926+Luis-omega@users.noreply.github.com
 stability: stable
 
--- homepage: http://www.haskell.org/hello/
+homepage: https://github.com/Luis-omega/MeguKin
 synopsis: Another functional language
 category: Language
 build-type: Simple
@@ -17,9 +17,6 @@ build-type: Simple
 Description:
   Another functional language
 
---source-repository head
---  type:     darcs
---  location: http://darcs.haskell.org/hello/
 
 -- flag threaded
 --   default: False
@@ -79,6 +76,7 @@ test-suite test
     ,QuickCheck
     ,megaparsec
     ,tagged
+    ,directory
     -- sandwich
     --sydtest
     -- I would like to use `sydtest` but `nix develop` keeps failing
