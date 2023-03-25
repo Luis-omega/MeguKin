@@ -1,12 +1,29 @@
 
-build :
-	cabal build
+.PHONY: requirements
 
-run : 
-	cabal run main
+sourceEnv=source .env/bin/activate
 
-test :
-	cabal run test
+src="MeguKin"
 
-dummy :
-	cabal build
+pythonFiles=$(find MeguKin/ tests/ -name "*.py")
+
+pythonSrc=$(find MeguKin/ -name "*.py")
+
+test: install
+	@${sourceEnv};pytest
+
+install: $(pythonSrc)
+	@${sourceEnv};pip install .
+
+uninstall:
+	@${sourceEnv};pip uninstall ${src}
+
+gen-stub:
+	@${sourceEnv};stubgen ${src}
+
+format:
+	@${sourceEnv};black src tests
+
+requirements: 
+	@${sourceEnv};pip freeze > requirements.txt
+
