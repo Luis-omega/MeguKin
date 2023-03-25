@@ -1,0 +1,108 @@
+SPACES : /\s/
+
+%ignore SPACES
+
+COMMENT_REST_OF_LINE: "#" /[^\n]*/ "\n"
+
+%ignore COMMENT_REST_OF_LINE
+
+DIGIT:/[0-9]/
+
+NON_ZERO_DIGIT:/[1-9]/
+
+NON_ZERO_INT:NON_ZERO_DIGIT (DIGIT|"_")*
+
+ZERO_INT:/0+(0|_)*/
+
+INT: NON_ZERO_INT | ZERO_INT
+
+UPPERCASES: /[A-Z]/
+
+IDENTIFIER_CHARACTER:/[a-zA-Z_0-9]/
+
+CAPITALIZED_IDENTIFIER : UPPERCASES IDENTIFIER_CHARACTER*
+
+LOWERCASSE_IDENTIFIER_HEAD: /[a-z]/
+
+LOWERCASSE_IDENTIFIER: LOWERCASSE_IDENTIFIER_HEAD IDENTIFIER_CHARACTER*
+
+HOLE: "_"
+
+COLON:":"
+
+DOUBLE_COLON.2:"::"
+
+SEMI_COLON:";"
+
+EQUAL:"="
+
+LAMBDA:"\\"
+
+PIPE : "|"
+
+// The arrows can be captured by the OPERATOR if we don't put a priority here.
+RIGHT_ARROW.2:"->"
+LEFT_ARROW.2:"<-"
+
+LPAREN:"("
+RPAREN:")"
+
+LBRACE:"{"
+RBRACE:"}"
+
+LBRACKET:"["
+RBRACKET:"]"
+
+OPERATOR_ALONE_CHARACTER : "+" | "-" | "~" | "/" | "!" | "?" 
+  | "¡" | "¿" | "$" | "¬" | ">" | "<" | "%" | "&" | "*"
+
+OPERATOR_NOT_ALONE_CHARACTER: "=" | "\\" | "|"
+
+// The "=" symbol alone is interpreted as "EQUAL" but if it's part of an operator
+// like the case of ">=" or "<=" then we need to interpret it as operator.
+// This also happens when with "\\" for the lambda expression
+OPERATOR.1: OPERATOR_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_ALONE_CHARACTER)*
+  | OPERATOR_NOT_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_ALONE_CHARACTER)+
+
+INFIX_IDENTIFIER : "`" (LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER) "`"
+
+parens{p}: LPAREN p RPAREN
+braces{p}: LBRACE p RBRACE
+brackets{p}: LBRACKET p RBRACKET
+
+sep_by1{p,sep}: p (sep p)*
+
+
+expression_parens: expression [COLON type_expression]
+
+expression_atom: LOWERCASSE_IDENTIFIER
+  | INT
+  | parens{expression_parens} 
+  | LAMBDA pattern_match RIGHT_ARROW braces{expression}
+
+expression_application: expression_atom+
+
+expression: expression_application ((OPERATOR|INFIX_IDENTIFIER) expression_application)*
+
+pattern_match_inner_paren : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER pattern_match_inner_paren* | parens{pattern_match_inner_paren}
+
+pattern_match : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{pattern_match_inner_paren}
+
+data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression,","}]
+
+data_type_constructors: sep_by1{data_type_constructor, PIPE} 
+
+// This is for the time when we allow type variables
+// type_atom: LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{type_expression}
+
+type_constructor: CAPITALIZED_IDENTIFIER (CAPITALIZED_IDENTIFIER | parens{type_expression})*
+
+type_expression: sep_by1{type_constructor,RIGHT_ARROW} 
+
+top_variable_declaration: LOWERCASSE_IDENTIFIER COLON braces{type_expression}
+
+top_variable_definition: LOWERCASSE_IDENTIFIER EQUAL braces{expression}
+
+top_data_type.2: "data" CAPITALIZED_IDENTIFIER EQUAL braces{data_type_constructors}
+
+top: (top_variable_definition | top_variable_declaration | top_data_type)*

@@ -1,8 +1,0 @@
-module ExampleModule(identation(dontReallyMatter,InThisModule),
-  right(),
-  ButWeCantHaveTrailingCommas(),
-  class Something(),
-  class Some(Thing,or),
-  class Two(thing) 
-) 
-where
