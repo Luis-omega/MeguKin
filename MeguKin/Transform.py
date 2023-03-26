@@ -1,12 +1,14 @@
 from typing import List, Optional, Union
 from lark import Transformer, v_args, Token, Tree
 
-from MeguKin.Types.Top import Constructor, DataType
-from MeguKin.Types.Type import Type, TypeName, TypeApplication
+from MeguKin.Types.Top import Constructor, DataType, Top, Definition, Declaration
+from MeguKin.Types.Type import Type, TypeName, TypeApplication, TypeArrow
+from MeguKin.Types.Expression import Expression
 
 
 @v_args(inline=True)
 class ToAST(Transformer):
+    # ------------------ Combinators ------------------
     def sep_by1(self, *init):
         others = [init[i] for i in range(0, len(init), 2)]
         return others
@@ -17,38 +19,11 @@ class ToAST(Transformer):
     def parens(self, start, value, end):
         return value
 
-    def type_expression(self, value: List[Type]) -> Type:
-        firstValue = value[0]
-        if len(value) == 1:
-            return firstValue
-        else:
-            out = firstValue
-            for argument in value[1:]:
-                out = TypeApplication(out, argument)
-            return out
+    # ------------------ Expressions ------------------
 
-    def type_constructor(
-        self, name, arguments: Optional[List[Union[Type, Token]]] = None
-    ) -> Type:
-        typeName = TypeName(name.value)
-        if arguments is None:
-            return typeName
+    # ------------------ PatternMatch ------------------
 
-        firstArgument: Union[Type, Token] = arguments[0]
-        if isinstance(firstArgument, Token):
-            typedArgument: Type = TypeName(firstArgument.value)
-        else:
-            typedArgument = firstArgument
-
-        out = TypeApplication(typeName, typedArgument)
-        for argument in arguments[1:]:
-            newArgument: Type
-            if isinstance(argument, Token):
-                newArgument = TypeName(argument.value)
-            else:
-                newArgument = argument
-            out = TypeApplication(out, newArgument)
-        return out
+    # ------------------ Data ------------------
 
     def data_type_constructor(
         self, name: Token, types: Optional[List[Type]]
@@ -63,10 +38,39 @@ class ToAST(Transformer):
     def data_type_constructors(self, sep: List[Constructor]) -> List[Constructor]:
         return sep
 
+    # ------------------ Types ------------------
+    def type_atom(self, value: List[Union[Token, Type]]) -> Type:
+        if isinstance(value, Token):
+            return TypeName(value.value)
+        else:
+            return value
+
+    def type_expression(self, value: List[Type]) -> Type:
+        value = value[::-1]
+        firstValue = value[0]
+        if len(value) == 1:
+            return firstValue
+        else:
+            out = firstValue
+            for domaint in value[1:]:
+                out = TypeArrow(domaint, out)
+            return out
+
+    # ------------------ Top ------------------
+    def top_variable_declaration(
+        self, name: [Token], colon, _type: [Type]
+    ) -> Declaration:
+        return Declaration(name, _type)
+
+    def top_variable_definition(
+        self, name: [Token], colon, expression: [Expression]
+    ) -> Definition:
+        return Definition(name, _type)
+
     def top_data_type(
         self, data, typeName: Token, eq, constructors: List[Constructor]
     ) -> DataType:
         return DataType(typeName.value, constructors)
 
-    def top(self, *values):
+    def top(self, *values: List[Top]) -> List[Top]:
         return values

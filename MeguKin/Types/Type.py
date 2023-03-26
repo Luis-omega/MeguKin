@@ -41,3 +41,13 @@ class TypeArrow(Type):
     def __init__(self, domain: Type, codomain: Type):
         self.domain = domain
         self.codomain = codomain
+
+    def __str__(self):
+        if isinstance(self.domain, TypeArrow):
+            return f"({self.domain})-> {self.codomain}"
+        return f"{self.domain} -> {self.codomain}"
+
+    def __repr__(self):
+        if isinstance(self.domain, TypeArrow):
+            return f"({self.domain})-> {self.codomain}"
+        return f"{self.domain} -> {self.codomain}"

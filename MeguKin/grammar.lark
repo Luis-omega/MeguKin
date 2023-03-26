@@ -66,12 +66,16 @@ OPERATOR.1: OPERATOR_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_AL
 
 INFIX_IDENTIFIER : "`" (LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER) "`"
 
+// --------------------- Combinators  ---------------------
+
 parens{p}: LPAREN p RPAREN
 braces{p}: LBRACE p RBRACE
 brackets{p}: LBRACKET p RBRACKET
 
 sep_by1{p,sep}: p (sep p)*
 
+
+// --------------------- Expressions  ---------------------
 
 expression_parens: expression [COLON type_expression]
 
@@ -84,20 +88,28 @@ expression_application: expression_atom+
 
 expression: expression_application ((OPERATOR|INFIX_IDENTIFIER) expression_application)*
 
+// --------------------- PatternMatch  ---------------------
+
 pattern_match_inner_paren : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER pattern_match_inner_paren* | parens{pattern_match_inner_paren}
 
 pattern_match : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{pattern_match_inner_paren}
+
+// --------------------- Data  ---------------------
 
 data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression,","}]
 
 data_type_constructors: sep_by1{data_type_constructor, PIPE} 
 
+// --------------------- Types  ---------------------
+
 // This is for the time when we allow type variables
 // type_atom: LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{type_expression}
 
-type_constructor: CAPITALIZED_IDENTIFIER (CAPITALIZED_IDENTIFIER | parens{type_expression})*
+type_atom : CAPITALIZED_IDENTIFIER | parens{type_expression}
 
-type_expression: sep_by1{type_constructor,RIGHT_ARROW} 
+type_expression: sep_by1{type_atom,RIGHT_ARROW}
+
+// --------------------- Top  ---------------------
 
 top_variable_declaration: LOWERCASSE_IDENTIFIER COLON braces{type_expression}
 

@@ -15,6 +15,12 @@ class Definition(Top):
         self.name = name
         self.expression = expression
 
+    def __str__(self):
+        return f"Definition({self.name},{self.expression})"
+
+    def __repr__(self):
+        return f"Definition({self.name},{self.expression})"
+
 
 class Declaration(Top):
     name: str
@@ -23,6 +29,12 @@ class Declaration(Top):
     def __init__(self, name: str, _type: Type):
         self.name = name
         self._type = _type
+
+    def __str__(self):
+        return f"Declaration({self.name},{self._type})"
+
+    def __repr__(self):
+        return f"Declaration({self.name},{self._type})"
 
 
 class Constructor(Type):
