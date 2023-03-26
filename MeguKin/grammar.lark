@@ -72,7 +72,7 @@ parens{p}: LPAREN p RPAREN
 braces{p}: LBRACE p RBRACE
 brackets{p}: LBRACKET p RBRACKET
 
-sep_by1{p,sep}: p (sep p)*
+sep_by1{p,sep}: p [(sep p)+]
 
 
 // --------------------- Expressions  ---------------------
@@ -90,9 +90,15 @@ expression: expression_application ((OPERATOR|INFIX_IDENTIFIER) expression_appli
 
 // --------------------- PatternMatch  ---------------------
 
-pattern_match_inner_paren : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER pattern_match_inner_paren* | parens{pattern_match_inner_paren}
+pattern_match_constructor_args: (LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{pattern_match})+
 
-pattern_match : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{pattern_match_inner_paren}
+// We can just use something like (CAPITALIZED_IDENTIFIER pattern_match_inner_paren*),
+// but then at transform time it would need a arbitrary size tupe in the arguments 
+// of the processin function for this rule.
+// We can put the "*" in the pattern_match_constructor_args, but then that rule would
+// be a rule producing the empty word in the grammar and that is bad also.
+pattern_match : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | CAPITALIZED_IDENTIFIER pattern_match_constructor_args | parens{pattern_match}
+
 
 // --------------------- Data  ---------------------
 
