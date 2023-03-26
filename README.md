@@ -3,8 +3,8 @@
 ## Description of the Language
 
 `MeguKin` aims to be a functional language with strong type system and 
-static type check evolving from simple typed lambada calculus 
-(aumented with tuples and maybe records),to a λω + type classes.
+static type check evolving from simple typed lambada calculus + adt + records
+(all monomorphic), to a λω + type classes.
 
 ## Motivation
 
@@ -18,11 +18,11 @@ since I want to be able (more or less) to:
 ## RoadMap
 
 - Implement simple typed lambda calculus without syntax sugar, with
-  tuples and iterpreted in python
+  adts and iterpreted in python
 
-- Add compilation to python
+- Add compilation to python (maybe add mypy and pypy support here?)
 
-- Add records
+- Add records and Modules
 
 - create a lsp for the language
 
