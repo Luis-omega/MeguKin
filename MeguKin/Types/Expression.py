@@ -1,3 +1,9 @@
+from typing import Optional
+
+from MeguKin.Types.Type import Type
+from MeguKin.Types.PatternMatch import PatternMatch
+
+
 class Expression:
     pass
 
@@ -38,15 +44,30 @@ class Application(Expression):
 
 
 class Function(Expression):
-    variable: Variable
+    pattern: PatternMatch
     value: Expression
 
-    def __init__(self, variable: Variable, value: Expression):
+    def __init__(self, pattern: PatternMatch, value: Expression):
         self.value = value
-        self.variable = variable
+        self.pattern = pattern
 
     def __str__(self):
-        return f"Function({self.variable},{self.value})"
+        return f"Function({self.pattern},{self.value})"
 
     def __repr__(self):
-        return f"Function({self.variable},{self.value})"
+        return f"Function({self.pattern},{self.value})"
+
+
+class AnnotatedExpression(Expression):
+    expression: Expression
+    annotation: Optional[Type]
+
+    def __init__(self, expression: Expression, annotation: Optional[Type]):
+        self.expression = expression
+        self.annotation = annotation
+
+    def __str__(self):
+        return f"({self.expression}:{self.annotation})"
+
+    def __repr__(self):
+        return f"({self.expression}:{self.annotation})"

@@ -1,16 +1,29 @@
 from typing import List, Optional, Union, TypeVar
-from lark import Transformer, v_args, Token, Tree
 
-from MeguKin.Types.Top import Constructor, DataType, Top, Definition, Declaration
-from MeguKin.Types.Type import Type, TypeName, TypeApplication, TypeArrow
-from MeguKin.Types.Expression import Expression
+from lark import Transformer, v_args, Token
+
+from MeguKin.Types.Expression import (
+    Expression,
+    AnnotatedExpression,
+    Variable,
+    Int,
+    Application,
+    Function,
+)
 from MeguKin.Types.PatternMatch import (
     PatternMatch,
     PatternMatchVariable,
     PatternMatchConstructor,
 )
+from MeguKin.Types.Top import Constructor, DataType, Top, Definition, Declaration
+from MeguKin.Types.Type import Type, TypeName, TypeArrow
+
 
 T = TypeVar("T")
+
+
+def is_lowercase_token(token: Token) -> bool:
+    return token.type == "LOWERCASSE_IDENTIFIER"
 
 
 @v_args(inline=True)
@@ -31,6 +44,32 @@ class ToAST(Transformer):
 
     # ------------------ Expressions ------------------
 
+    def expression_parens(
+        self, expression: Expression, colon=None, annotation: Optional[Type] = None
+    ) -> AnnotatedExpression:
+        return AnnotatedExpression(expression, annotation)
+
+    def expression_lambda(
+        self, lambda_symbol, pattern: PatternMatch, arrow, expression: Expression
+    ) -> Function:
+        return Function(pattern, expression)
+
+    def expression_atom(self, atom: Union[Token, Expression]) -> Expression:
+        if isinstance(atom, Token):
+            if is_lowercase_token(atom):
+                return Variable(atom.value)
+            else:
+                return Int(int(atom.value.replace("_", "")))
+        else:
+            return atom
+
+    def expression_application(self, *values: Expression) -> Expression:
+        # rule uses "+" so, this is guaranteed
+        out = values[0]
+        for value in values[1:]:
+            out = Application(out, value)
+        return out
+
     # ------------------ PatternMatch ------------------
     def pattern_match_constructor_args(
         self, *args: Union[Token, PatternMatch]
@@ -38,7 +77,7 @@ class ToAST(Transformer):
         out: List[PatternMatch] = []
         for arg in args:
             if isinstance(arg, Token):
-                if arg.type == "LOWERCASSE_IDENTIFIER":
+                if is_lowercase_token(arg):
                     out.append(PatternMatchVariable(arg.value))
                 else:
                     out.append(PatternMatchConstructor(arg.value, []))
@@ -52,7 +91,7 @@ class ToAST(Transformer):
         secondArg: Optional[List[PatternMatch]] = None,
     ) -> PatternMatch:
         if isinstance(firstArg, Token):
-            if firstArg.type == "LOWERCASSE_IDENTIFIER":
+            if is_lowercase_token(firstArg):
                 return PatternMatchVariable(firstArg.value)
             else:
                 if secondArg is None:

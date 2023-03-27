@@ -79,10 +79,17 @@ sep_by1{p,sep}: p [(sep p)+]
 
 expression_parens: expression [COLON type_expression]
 
+// When we add indentation, we would need to put 
+// lamba at the top of the precedence :
+// `\ a -> x +b` sould be `\ a -> (x+b)`
+// but keeping the rules as is now for indentation, we would get:
+// `(\a -> x) + b`
+expression_lambda : LAMBDA pattern_match RIGHT_ARROW braces{expression}
+
 expression_atom: LOWERCASSE_IDENTIFIER
   | INT
-  | parens{expression_parens} 
-  | LAMBDA pattern_match RIGHT_ARROW braces{expression}
+  | parens{expression_parens}
+  | expression_lambda
 
 expression_application: expression_atom+
 
