@@ -2,7 +2,7 @@ from typing import List, Optional, Union, TypeVar
 
 from lark import Transformer, v_args, Token
 
-from MeguKin.Types.Expression import (
+from MeguKin.Ast.Types.Expression import (
     Expression,
     AnnotatedExpression,
     Variable,
@@ -11,13 +11,13 @@ from MeguKin.Types.Expression import (
     Function,
     OperatorsWithoutMeaning,
 )
-from MeguKin.Types.PatternMatch import (
+from MeguKin.Ast.Types.PatternMatch import (
     PatternMatch,
     PatternMatchVariable,
     PatternMatchConstructor,
 )
-from MeguKin.Types.Top import Constructor, DataType, Top, Definition, Declaration
-from MeguKin.Types.Type import Type, TypeName, TypeArrow
+from MeguKin.Ast.Types.Top import Constructor, DataType, Top, Definition, Declaration
+from MeguKin.Ast.Types.Type import Type, TypeName, TypeArrow
 
 
 T = TypeVar("T")

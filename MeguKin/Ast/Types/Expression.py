@@ -1,7 +1,7 @@
 from typing import Optional, List, Union
 
-from MeguKin.Types.Type import Type
-from MeguKin.Types.PatternMatch import PatternMatch
+from MeguKin.Ast.Types.Type import Type
+from MeguKin.Ast.Types.PatternMatch import PatternMatch
 
 
 class Expression:

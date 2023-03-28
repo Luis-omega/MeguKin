@@ -50,8 +50,8 @@ class TypeArrow(Type):
 
     def pretty(self):
         if isinstance(self.domain, TypeArrow):
-            return f"({self.domain})-> {self.codomain}"
-        return f"{self.domain} -> {self.codomain}"
+            return f"({self.domain.pretty()})-> {self.codomain.pretty()}"
+        return f"{self.domain.pretty()} -> {self.codomain.pretty()}"
 
     def __str__(self):
         return repr(self)

@@ -1,6 +1,6 @@
 from lark import Lark
-from MeguKin.Transform import ToAST
-from MeguKin.Types.Top import Top
+from MeguKin.Ast.Transform import ToAST
+from MeguKin.Ast.Types.Top import Top
 
 
 def load_grammar() -> Lark:
@@ -35,6 +35,9 @@ def rountrip_test(parser: Lark, input_to_parse: str):
 
 def test_variable_declaration():
     rountrip_test(parser_for_test, "a : (A)")
+    rountrip_test(parser_for_test, "a : (A->B)")
+    rountrip_test(parser_for_test, "a : (A->B->C)")
+    rountrip_test(parser_for_test, "a : ((A->B)->C)")
 
 
 parser_for_test = load_grammar()

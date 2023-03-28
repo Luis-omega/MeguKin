@@ -1,6 +1,6 @@
 from typing import List
-from MeguKin.Types.Expression import Expression
-from MeguKin.Types.Type import Type
+from MeguKin.Ast.Types.Expression import Expression
+from MeguKin.Ast.Types.Type import Type
 
 
 class Top:
