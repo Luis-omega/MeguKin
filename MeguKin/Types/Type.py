@@ -12,6 +12,9 @@ class TypeName(Type):
     def __init__(self, name: str):
         self.name = name
 
+    def pretty(self):
+        return f"{self.name}"
+
     def __str__(self):
         return f"TypeName({self.name})"
 
@@ -26,6 +29,9 @@ class TypeApplication(Type):
     def __init__(self, function: Type, argument: Type):
         self.function = function
         self.argument = argument
+
+    def pretty(self):
+        return f"TypeApplication({self.function},{self.argument})"
 
     def __str__(self):
         return f"TypeApplication({self.function},{self.argument})"
@@ -42,12 +48,13 @@ class TypeArrow(Type):
         self.domain = domain
         self.codomain = codomain
 
-    def __str__(self):
+    def pretty(self):
         if isinstance(self.domain, TypeArrow):
             return f"({self.domain})-> {self.codomain}"
         return f"{self.domain} -> {self.codomain}"
 
+    def __str__(self):
+        return repr(self)
+
     def __repr__(self):
-        if isinstance(self.domain, TypeArrow):
-            return f"({self.domain})-> {self.codomain}"
-        return f"{self.domain} -> {self.codomain}"
+        return f"TypeArrow({self.domain}, {self.codomain})"

@@ -9,6 +9,7 @@ from MeguKin.Types.Expression import (
     Int,
     Application,
     Function,
+    OperatorsWithoutMeaning,
 )
 from MeguKin.Types.PatternMatch import (
     PatternMatch,
@@ -69,6 +70,17 @@ class ToAST(Transformer):
         for value in values[1:]:
             out = Application(out, value)
         return out
+
+    # See note about the return type [str, Expression, str, Expression,...]
+    # in OperatorsWithoutMeaning
+    def expression(self, *allValues) -> Expression:
+        if len(allValues) == 1:
+            return allValues[0]
+        arg = [
+            allValues[i].value if i % 2 == 1 else allValues[i]
+            for i in range(len(allValues))
+        ]
+        return OperatorsWithoutMeaning(arg)
 
     # ------------------ PatternMatch ------------------
     def pattern_match_constructor_args(

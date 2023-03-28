@@ -28,6 +28,9 @@ if "__main__" == __name__:
         try:
             result = parser.parse(sys.argv[1])
             print(result.pretty())
-            print(ToAST().transform(result))
+            astResult = ToAST().transform(result)
+            print(astResult)
+            for i in astResult:
+                print(i.pretty())
         except Exception as e:
             print(e)
