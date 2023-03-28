@@ -1,3 +1,8 @@
+from typing import Union
+
+TypeT = Union["TypeInt", "TypeArrow", "TypeApplication"]
+
+
 class Type:
     pass
 

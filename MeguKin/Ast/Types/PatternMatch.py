@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Union
+
+PatternMatchT = Union["PatternMatchVariable", "PatternMatchConstructor"]
 
 
 class PatternMatch:
@@ -24,9 +26,9 @@ class PatternMatchVariable(PatternMatch):
 # TODO : Make it a two elements constructor instead of having a list
 class PatternMatchConstructor(PatternMatch):
     name: str
-    patterns: List[PatternMatch]
+    patterns: List["PatternMatchT"]
 
-    def __init__(self, name: str, patterns: List[PatternMatch]):
+    def __init__(self, name: str, patterns: List["PatternMatchT"]):
         self.name = name
         self.patterns = patterns
 

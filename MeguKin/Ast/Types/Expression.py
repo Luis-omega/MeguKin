@@ -1,7 +1,16 @@
 from typing import Optional, List, Union
 
-from MeguKin.Ast.Types.Type import Type
-from MeguKin.Ast.Types.PatternMatch import PatternMatch
+from MeguKin.Ast.Types.Type import TypeT
+from MeguKin.Ast.Types.PatternMatch import PatternMatchT
+
+ExpressionT = Union[
+    "Int",
+    "Variable",
+    "Application",
+    "Function",
+    "AnnotatedExpression",
+    "OperatorsWithoutMeaning",
+]
 
 
 class Expression:
@@ -41,10 +50,10 @@ class Variable(Expression):
 
 
 class Application(Expression):
-    function: Expression
-    argument: Expression
+    function: ExpressionT
+    argument: ExpressionT
 
-    def __init__(self, function: Expression, argument: Expression):
+    def __init__(self, function: ExpressionT, argument: ExpressionT):
         self.function = function
         self.argument = argument
 
@@ -59,10 +68,10 @@ class Application(Expression):
 
 
 class Function(Expression):
-    pattern: PatternMatch
-    value: Expression
+    pattern: PatternMatchT
+    value: ExpressionT
 
-    def __init__(self, pattern: PatternMatch, value: Expression):
+    def __init__(self, pattern: PatternMatchT, value: ExpressionT):
         self.value = value
         self.pattern = pattern
 
@@ -77,10 +86,10 @@ class Function(Expression):
 
 
 class AnnotatedExpression(Expression):
-    expression: Expression
-    annotation: Optional[Type]
+    expression: ExpressionT
+    annotation: Optional[TypeT]
 
-    def __init__(self, expression: Expression, annotation: Optional[Type]):
+    def __init__(self, expression: ExpressionT, annotation: Optional[TypeT]):
         self.expression = expression
         self.annotation = annotation
 
@@ -110,9 +119,9 @@ class OperatorsWithoutMeaning(Expression):
     # value = ConsItem 1 (ConsItem "hi" (InitialItem 0))    #
     #
     # And in fact we can translate that with a huge cost at runtime to us...
-    listOfOperatorExpression: List[Union[str, Expression]]
+    listOfOperatorExpression: List[Union[str, ExpressionT]]
 
-    def __init__(self, listOfOperatorExpression: List[Union[str, Expression]]):
+    def __init__(self, listOfOperatorExpression: List[Union[str, ExpressionT]]):
         self.listOfOperatorExpression = listOfOperatorExpression
 
     def pretty(self):

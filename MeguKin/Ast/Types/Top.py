@@ -1,6 +1,8 @@
-from typing import List
-from MeguKin.Ast.Types.Expression import Expression
-from MeguKin.Ast.Types.Type import Type
+from typing import List, Union
+from MeguKin.Ast.Types.Expression import ExpressionT
+from MeguKin.Ast.Types.Type import TypeT, Type
+
+TopT = Union["Definition", "Declaration", "DefinitionAndDeclaration", "DataType"]
 
 
 class Top:
@@ -10,9 +12,9 @@ class Top:
 
 class Definition(Top):
     name: str
-    expression: Expression
+    expression: ExpressionT
 
-    def __init__(self, name: str, expression: Expression):
+    def __init__(self, name: str, expression: ExpressionT):
         self.name = name
         self.expression = expression
 
@@ -28,9 +30,9 @@ class Definition(Top):
 
 class Declaration(Top):
     name: str
-    _type: Type
+    _type: TypeT
 
-    def __init__(self, name: str, _type: Type):
+    def __init__(self, name: str, _type: TypeT):
         self.name = name
         self._type = _type
 
@@ -44,11 +46,29 @@ class Declaration(Top):
         return f"Declaration({self.name},{self._type})"
 
 
+class DefinitionAndDeclaration(Top):
+    definition: Definition
+    declaration: Declaration
+
+    def __init__(self, definition: Definition, declaration: Declaration):
+        self.definition = definition
+        self.declaration = declaration
+
+    def pretty(self):
+        return f"{self.name} : ({self._type.pretty()})"
+
+    def __str__(self):
+        return f"Declaration({self.name},{self._type})"
+
+    def __repr__(self):
+        return f"Declaration({self.name},{self._type})"
+
+
 class Constructor(Type):
     name: str
-    types: List[Type]
+    types: List[TypeT]
 
-    def __init__(self, name: str, types: List[Type]):
+    def __init__(self, name: str, types: List[TypeT]):
         self.name = name
         self.types = types
 
