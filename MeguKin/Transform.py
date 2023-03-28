@@ -160,5 +160,5 @@ class ToAST(Transformer):
     ) -> DataType:
         return DataType(typeName.value, constructors)
 
-    def top(self, *values: Top) -> List[Top]:
-        return list(values)
+    def top(self, value: Top) -> Top:
+        return value

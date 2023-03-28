@@ -4,7 +4,8 @@ from MeguKin.Types.Type import Type
 
 
 class Top:
-    pass
+    def pretty(self):
+        raise "Not implemented"
 
 
 class Definition(Top):
@@ -34,7 +35,7 @@ class Declaration(Top):
         self._type = _type
 
     def pretty(self):
-        return f"{self.name} : {{{self._type.pretty()}}}"
+        return f"{self.name} : ({self._type.pretty()})"
 
     def __str__(self):
         return f"Declaration({self.name},{self._type})"

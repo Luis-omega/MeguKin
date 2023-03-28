@@ -1,5 +1,6 @@
 from lark import Lark
 from MeguKin.Transform import ToAST
+from MeguKin.Types.Top import Top
 
 
 def load_grammar() -> Lark:
@@ -20,16 +21,20 @@ def load_grammar() -> Lark:
         return parser
 
 
-if "__main__" == __name__:
-    parser = load_grammar()
-    import sys
+def parseToASt(parser: Lark, input_to_parse: str) -> Top:
+    parsedValue = parser.parse(input_to_parse)
+    astValue = ToAST().transform(parsedValue)
+    return astValue
 
-    if len(sys.argv) == 2:
-        try:
-            result = parser.parse(sys.argv[1])
-            print(result.pretty())
-            astResult = ToAST().transform(result)
-            print(astResult)
-            print(astResult.pretty())
-        except Exception as e:
-            print(e)
+
+def rountrip_test(parser: Lark, input_to_parse: str):
+    astValue = parseToASt(parser, input_to_parse)
+    stringValue = astValue.pretty().replace(" ", "")
+    assert stringValue == input_to_parse.replace(" ", "")
+
+
+def test_variable_declaration():
+    rountrip_test(parser_for_test, "a : (A)")
+
+
+parser_for_test = load_grammar()
