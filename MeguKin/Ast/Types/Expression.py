@@ -1,10 +1,13 @@
 from typing import Optional, List, Union
 
+from lark import Token
+
+from MeguKin.Reconstruction import Range
 from MeguKin.Ast.Types.Type import TypeT
 from MeguKin.Ast.Types.PatternMatch import PatternMatchT
 
 ExpressionT = Union[
-    "Int",
+    "Literal",
     "Variable",
     "Application",
     "Function",
@@ -17,11 +20,13 @@ class Expression:
     pass
 
 
-class Int(Expression):
-    value: int
+class Literal(Expression):
+    value: Token
+    _range: Range
 
-    def __init__(self, value: int):
+    def __init__(self, value: Token, _range: Range):
         self.value = value
+        self._range = _range
 
     def pretty(self):
         return f"{self.value}"
@@ -35,9 +40,13 @@ class Int(Expression):
 
 class Variable(Expression):
     name: str
+    constructor: bool
+    _range: Range
 
-    def __init__(self, name: str):
+    def __init__(self, name: Token, constructor: bool, _range: Range):
         self.name = name
+        self.constructor = constructor
+        self._range = _range
 
     def pretty(self):
         return f"{self.name}"
@@ -52,10 +61,12 @@ class Variable(Expression):
 class Application(Expression):
     function: ExpressionT
     argument: ExpressionT
+    _range: Range
 
-    def __init__(self, function: ExpressionT, argument: ExpressionT):
+    def __init__(self, function: ExpressionT, argument: ExpressionT, _range: Range):
         self.function = function
         self.argument = argument
+        self._range = _range
 
     def pretty(self):
         return f"{self.function.pretty()} ({self.argument}.pretty())"
@@ -70,10 +81,12 @@ class Application(Expression):
 class Function(Expression):
     pattern: PatternMatchT
     value: ExpressionT
+    _range: Range
 
-    def __init__(self, pattern: PatternMatchT, value: ExpressionT):
+    def __init__(self, pattern: PatternMatchT, value: ExpressionT, _range: Range):
         self.value = value
         self.pattern = pattern
+        self._range = _range
 
     def pretty(self):
         return f"\ {self.pattern.pretty()} -> {{{self.value.pretty()}}}"
@@ -88,10 +101,14 @@ class Function(Expression):
 class AnnotatedExpression(Expression):
     expression: ExpressionT
     annotation: Optional[TypeT]
+    _range: Range
 
-    def __init__(self, expression: ExpressionT, annotation: Optional[TypeT]):
+    def __init__(
+        self, expression: ExpressionT, annotation: Optional[TypeT], _range: Range
+    ):
         self.expression = expression
         self.annotation = annotation
+        self._range = _range
 
     def pretty(self):
         return f"({self.expression}:{self.annotation})"
@@ -119,10 +136,14 @@ class OperatorsWithoutMeaning(Expression):
     # value = ConsItem 1 (ConsItem "hi" (InitialItem 0))    #
     #
     # And in fact we can translate that with a huge cost at runtime to us...
-    listOfOperatorExpression: List[Union[str, ExpressionT]]
+    listOfOperatorExpression: List[Union[Token, ExpressionT]]
+    _range: Range
 
-    def __init__(self, listOfOperatorExpression: List[Union[str, ExpressionT]]):
+    def __init__(
+        self, listOfOperatorExpression: List[Union[Token, ExpressionT]], _range: Range
+    ):
         self.listOfOperatorExpression = listOfOperatorExpression
+        self._range = _range
 
     def pretty(self):
         args = " ".join(

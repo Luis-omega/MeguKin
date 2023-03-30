@@ -2,22 +2,23 @@ from typing import List, Optional, Union, TypeVar
 
 from lark import Transformer, v_args, Token
 
+from MeguKin.Reconstruction import mergeRanges, token2Range
 from MeguKin.Ast.Types.Expression import (
-    Expression,
     AnnotatedExpression,
     Variable,
-    Int,
+    Literal,
     Application,
     Function,
     OperatorsWithoutMeaning,
+    ExpressionT,
 )
 from MeguKin.Ast.Types.PatternMatch import (
-    PatternMatch,
+    PatternMatchT,
     PatternMatchVariable,
     PatternMatchConstructor,
 )
-from MeguKin.Ast.Types.Top import Constructor, DataType, Top, Definition, Declaration
-from MeguKin.Ast.Types.Type import Type, TypeName, TypeArrow
+from MeguKin.Ast.Types.Top import Constructor, DataType, TopT, Definition, Declaration
+from MeguKin.Ast.Types.Type import TypeT, TypeName, TypeArrow
 
 
 T = TypeVar("T")
@@ -25,6 +26,10 @@ T = TypeVar("T")
 
 def is_lowercase_token(token: Token) -> bool:
     return token.type == "LOWERCASSE_IDENTIFIER"
+
+
+def is_capplitalized_identifier(token: Token) -> bool:
+    return token.type == "CAPITALIZED_IDENTIFIER"
 
 
 @v_args(inline=True)
@@ -46,41 +51,53 @@ class ToAST(Transformer):
     # ------------------ Expressions ------------------
 
     def expression_parens(
-        self, expression: Expression, colon=None, annotation: Optional[Type] = None
-    ) -> AnnotatedExpression:
-        return AnnotatedExpression(expression, annotation)
+        self, expression: ExpressionT, colon=None, annotation: Optional[TypeT] = None
+    ) -> ExpressionT:
+        if annotation is None:
+            return expression
+        else:
+            return AnnotatedExpression(
+                expression,
+                annotation,
+                mergeRanges(expression._range, annotation._range),
+            )
 
     def expression_lambda(
-        self, lambda_symbol, pattern: PatternMatch, arrow, expression: Expression
+        self, lambda_symbol, pattern: PatternMatchT, arrow, expression: ExpressionT
     ) -> Function:
-        return Function(pattern, expression)
+        init_range = token2Range(lambda_symbol)
+        return Function(pattern, expression, mergeRanges(init_range, expression._range))
 
-    def expression_atom(self, atom: Union[Token, Expression]) -> Expression:
+    def expression_atom(self, atom: Union[Token, ExpressionT]) -> ExpressionT:
         if isinstance(atom, Token):
             if is_lowercase_token(atom):
-                return Variable(atom.value)
+                return Variable(atom.value, False, token2Range(atom))
+            elif is_capplitalized_identifier(atom):
+                return Variable(atom.value, True, token2Range(atom))
             else:
-                return Int(int(atom.value.replace("_", "")))
+                return Literal(atom, token2Range(atom))
         else:
             return atom
 
-    def expression_application(self, *values: Expression) -> Expression:
+    def expression_application(self, *values: ExpressionT) -> ExpressionT:
         # rule uses "+" so, this is guaranteed
         out = values[0]
         for value in values[1:]:
-            out = Application(out, value)
+            out = Application(out, value, mergeRanges(out._range, value._range))
         return out
 
     # See note about the return type [str, Expression, str, Expression,...]
     # in OperatorsWithoutMeaning
-    def expression(self, *allValues) -> Expression:
-        if len(allValues) == 1:
-            return allValues[0]
-        arg = [
-            allValues[i].value if i % 2 == 1 else allValues[i]
-            for i in range(len(allValues))
-        ]
-        return OperatorsWithoutMeaning(arg)
+    def expression(self, *allValues) -> ExpressionT:
+        match allValues:
+            case [value]:
+                return value
+            # Grammar guaranty that we always have a value
+            case _:
+                arg = list(allValues)
+                return OperatorsWithoutMeaning(
+                    arg, mergeRanges(allValues[0], allValues[-1])
+                )
 
     # ------------------ PatternMatch ------------------
     def pattern_match_constructor_args(

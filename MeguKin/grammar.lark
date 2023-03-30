@@ -87,6 +87,7 @@ expression_parens: expression [COLON type_expression]
 expression_lambda : LAMBDA pattern_match RIGHT_ARROW parens{expression}
 
 expression_atom: LOWERCASSE_IDENTIFIER
+  | CAPITALIZED_IDENTIFIER
   | INT
   | parens{expression_parens}
   | expression_lambda

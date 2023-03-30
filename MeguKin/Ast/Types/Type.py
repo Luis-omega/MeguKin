@@ -1,21 +1,21 @@
 from typing import Union
 
-TypeT = Union["TypeInt", "TypeArrow", "TypeApplication"]
+from MeguKin.Reconstruction import Range
+
+TypeT = Union["TypeArrow", "TypeApplication"]
 
 
 class Type:
     pass
 
 
-class TypeInt(Type):
-    pass
-
-
 class TypeName(Type):
     name: str
+    _range: Range
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, _range: Range):
         self.name = name
+        self._range = _range
 
     def pretty(self):
         return f"{self.name}"
@@ -30,10 +30,12 @@ class TypeName(Type):
 class TypeApplication(Type):
     function: Type
     argument: Type
+    _range: Range
 
-    def __init__(self, function: Type, argument: Type):
+    def __init__(self, function: Type, argument: Type, _range: Range):
         self.function = function
         self.argument = argument
+        self._range = _range
 
     def pretty(self):
         return f"TypeApplication({self.function},{self.argument})"
@@ -48,10 +50,12 @@ class TypeApplication(Type):
 class TypeArrow(Type):
     domain: Type
     codomain: Type
+    _range: Range
 
-    def __init__(self, domain: Type, codomain: Type):
+    def __init__(self, domain: Type, codomain: Type, _range: Range):
         self.domain = domain
         self.codomain = codomain
+        self._range = _range
 
     def pretty(self):
         if isinstance(self.domain, TypeArrow):

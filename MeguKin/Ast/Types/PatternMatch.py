@@ -1,5 +1,7 @@
 from typing import List, Union
 
+from MeguKin.Reconstruction import Range
+
 PatternMatchT = Union["PatternMatchVariable", "PatternMatchConstructor"]
 
 
@@ -9,9 +11,11 @@ class PatternMatch:
 
 class PatternMatchVariable(PatternMatch):
     name: str
+    _range: Range
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, _range: Range):
         self.name = name
+        self._range = _range
 
     def pretty(self):
         return f"{self.name}"
@@ -27,10 +31,12 @@ class PatternMatchVariable(PatternMatch):
 class PatternMatchConstructor(PatternMatch):
     name: str
     patterns: List["PatternMatchT"]
+    _range: Range
 
-    def __init__(self, name: str, patterns: List["PatternMatchT"]):
+    def __init__(self, name: str, patterns: List["PatternMatchT"], _range: Range):
         self.name = name
         self.patterns = patterns
+        self._range = _range
 
     def pretty(self):
         args = " ".join([f"({i.pretty()})" for i in self.patterns])
