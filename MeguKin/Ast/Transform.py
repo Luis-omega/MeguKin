@@ -1,4 +1,5 @@
 from typing import List, Optional, Union, TypeVar
+from functools import reduce
 
 from lark import Transformer, v_args, Token
 
@@ -68,6 +69,9 @@ class ToAST(Transformer):
         init_range = token2Range(lambda_symbol)
         return Function(pattern, expression, mergeRanges(init_range, expression._range))
 
+    def expression_literal(self, tok: Token) -> Literal:
+        return Literal(tok, token2Range(tok))
+
     def expression_atom(self, atom: Union[Token, ExpressionT]) -> ExpressionT:
         if isinstance(atom, Token):
             if is_lowercase_token(atom):
@@ -75,7 +79,7 @@ class ToAST(Transformer):
             elif is_capplitalized_identifier(atom):
                 return Variable(atom.value, True, token2Range(atom))
             else:
-                return Literal(atom, token2Range(atom))
+                raise Exception("if you see this, someone updated the grammar")
         else:
             return atom
 
@@ -96,63 +100,75 @@ class ToAST(Transformer):
             case _:
                 arg = list(allValues)
                 return OperatorsWithoutMeaning(
-                    arg, mergeRanges(allValues[0], allValues[-1])
+                    arg, mergeRanges(allValues[0]._range, allValues[-1]._range)
                 )
 
     # ------------------ PatternMatch ------------------
     def pattern_match_constructor_args(
-        self, *args: Union[Token, PatternMatch]
-    ) -> List[PatternMatch]:
-        out: List[PatternMatch] = []
+        self, *args: Union[Token, PatternMatchT]
+    ) -> List[PatternMatchT]:
+        out: List[PatternMatchT] = []
         for arg in args:
             if isinstance(arg, Token):
                 if is_lowercase_token(arg):
-                    out.append(PatternMatchVariable(arg.value))
+                    out.append(PatternMatchVariable(arg.value, token2Range(arg)))
                 else:
-                    out.append(PatternMatchConstructor(arg.value, []))
+                    out.append(PatternMatchConstructor(arg.value, [], token2Range(arg)))
             else:
                 out.append(arg)
         return out
 
     def pattern_match(
         self,
-        firstArg: Union[Token, PatternMatch],
-        secondArg: Optional[List[PatternMatch]] = None,
-    ) -> PatternMatch:
+        firstArg: Union[Token, PatternMatchT],
+        secondArg: Optional[List[PatternMatchT]] = None,
+    ) -> PatternMatchT:
         if isinstance(firstArg, Token):
             if is_lowercase_token(firstArg):
-                return PatternMatchVariable(firstArg.value)
+                return PatternMatchVariable(firstArg.value, token2Range(firstArg))
             else:
                 if secondArg is None:
-                    return PatternMatchConstructor(firstArg.value, [])
+                    return PatternMatchConstructor(
+                        firstArg.value, [], token2Range(firstArg)
+                    )
                 else:
-                    return PatternMatchConstructor(firstArg.value, secondArg)
+                    acc = token2Range(firstArg)
+                    for i in secondArg:
+                        acc = mergeRanges(acc, i._range)
+                    return PatternMatchConstructor(
+                        firstArg.value,
+                        secondArg,
+                        acc,
+                    )
         else:
             return firstArg
 
     # ------------------ Data ------------------
 
     def data_type_constructor(
-        self, name: Token, types: Optional[List[Type]]
+        self, name: Token, types: Optional[List[TypeT]]
     ) -> Constructor:
-        realTypes: List[Type]
+        realTypes: List[TypeT]
         if types is None:
             realTypes = []
         else:
             realTypes = types
-        return Constructor(name.value, realTypes)
+        acc = token2Range(name)
+        for i in realTypes:
+            acc = mergeRanges(acc, i._range)
+        return Constructor(name.value, realTypes, acc)
 
     def data_type_constructors(self, sep: List[Constructor]) -> List[Constructor]:
         return sep
 
     # ------------------ Types ------------------
-    def type_atom(self, value: Union[Token, Type]) -> Type:
+    def type_atom(self, value: Union[Token, TypeT]) -> TypeT:
         if isinstance(value, Token):
-            return TypeName(value.value)
+            return TypeName(value.value, token2Range(value))
         else:
             return value
 
-    def type_expression(self, value: List[Type]) -> Type:
+    def type_expression(self, value: List[TypeT]) -> TypeT:
         value = value[::-1]
         firstValue = value[0]
         if len(value) == 1:
@@ -160,22 +176,33 @@ class ToAST(Transformer):
         else:
             out = firstValue
             for domaint in value[1:]:
-                out = TypeArrow(domaint, out)
+                _range = mergeRanges(out._range, domaint._range)
+                out = TypeArrow(domaint, out, _range)
             return out
 
     # ------------------ Top ------------------
-    def top_variable_declaration(self, name: Token, colon, _type: Type) -> Declaration:
-        return Declaration(name, _type)
+    def top_variable_declaration(self, name: Token, colon, _type: TypeT) -> Declaration:
+        return Declaration(
+            name.value, _type, mergeRanges(token2Range(name), _type._range)
+        )
 
     def top_variable_definition(
-        self, name: Token, colon, expression: Expression
+        self, name: Token, colon, expression: ExpressionT
     ) -> Definition:
-        return Definition(name, expression)
+        return Definition(
+            name.value, expression, mergeRanges(token2Range(name), expression._range)
+        )
 
     def top_data_type(
-        self, data, typeName: Token, eq, constructors: List[Constructor]
+        self, data: Token, typeName: Token, eq, constructors: List[Constructor]
     ) -> DataType:
-        return DataType(typeName.value, constructors)
+        # well, tecnically the last token is the one with the biggest range,
+        # so, a mergeRanges between `data` and `constructors[-1]` must be enough.
+        _range = mergeRanges(
+            token2Range(data),
+            reduce(mergeRanges, [i._range for i in constructors]),
+        )
+        return DataType(typeName.value, constructors, _range)
 
-    def top(self, value: Top) -> Top:
+    def top(self, value: TopT) -> TopT:
         return value

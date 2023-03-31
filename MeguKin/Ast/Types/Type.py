@@ -2,7 +2,7 @@ from typing import Union
 
 from MeguKin.Reconstruction import Range
 
-TypeT = Union["TypeArrow", "TypeApplication"]
+TypeT = Union["TypeArrow", "TypeApplication", "TypeName"]
 
 
 class Type:

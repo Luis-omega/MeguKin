@@ -86,9 +86,11 @@ expression_parens: expression [COLON type_expression]
 // `(\a -> x) + b`
 expression_lambda : LAMBDA pattern_match RIGHT_ARROW parens{expression}
 
+expression_literal : INT
+
 expression_atom: LOWERCASSE_IDENTIFIER
   | CAPITALIZED_IDENTIFIER
-  | INT
+  | expression_literal
   | parens{expression_parens}
   | expression_lambda
 

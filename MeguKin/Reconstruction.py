@@ -42,8 +42,8 @@ def token2Range(token: Token) -> Range:
         token.end_line,
         token.column,
         token.end_column,
-        token.pos_star,
-        token.pos_end,
+        token.start_pos,
+        token.end_pos,
     )
 
 
