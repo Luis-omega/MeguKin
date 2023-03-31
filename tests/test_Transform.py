@@ -1,4 +1,6 @@
 from lark import Lark
+import pytest
+
 from MeguKin.Ast.Transform import ToAST
 from MeguKin.Ast.Types.Top import Top
 
@@ -33,11 +35,33 @@ def rountrip_test(parser: Lark, input_to_parse: str):
     assert stringValue == input_to_parse.replace(" ", "")
 
 
-def test_variable_declaration():
-    rountrip_test(parser_for_test, "a : (A)")
-    rountrip_test(parser_for_test, "a : (A->B)")
-    rountrip_test(parser_for_test, "a : (A->B->C)")
-    rountrip_test(parser_for_test, "a : ((A->B)->C)")
+variableDeclarations = [
+    "a : (A)",
+    "b : (A->B)",
+    "c : (A->B->C)",
+    "d : ((A->B)->C)",
+    "e : ((A->B->C)->D) ",
+]
+
+variableDefinitions = [
+    "a = (a)",
+    "b = ((a)+(b))",
+    "c = (\\ x->(y))",
+    "d = (\\x -> ((a)+(b)))",
+    "e = (\\Some (x) -> (a))",
+    "f = (\\Some (x) -> ((a)+(b)))",
+    "g = (\\Some (Make (Mine) (Better) (now)) -> ((a)+(b)))",
+]
+
+
+@pytest.mark.parametrize("variableDeclaration", variableDeclarations)
+def test_variable_declaration(variableDeclaration):
+    rountrip_test(parser_for_test, variableDeclaration)
+
+
+@pytest.mark.parametrize("variableDefinition", variableDefinitions)
+def test_variable_definition(variableDefinition):
+    rountrip_test(parser_for_test, variableDefinition)
 
 
 parser_for_test = load_grammar()

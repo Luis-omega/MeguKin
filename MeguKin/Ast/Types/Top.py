@@ -24,7 +24,7 @@ class Definition(Top):
         self._range = _range
 
     def pretty(self):
-        return f"{self.name} = {{{self.expression.pretty()}}}"
+        return f"{self.name} = ({self.expression.pretty()})"
 
     def __str__(self):
         return f"Definition({self.name},{self.expression})"
