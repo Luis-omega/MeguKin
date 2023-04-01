@@ -1,5 +1,11 @@
 from lark import Lark
 import pytest
+from hypothesis import given, settings, HealthCheck
+from hypothesis.strategies import composite
+
+from tests.ASTgenerators import *
+
+# gen_top_definition, gen_expression
 
 from MeguKin.Ast.Transform import ToAST
 from MeguKin.Ast.Types.Top import Top
@@ -35,6 +41,12 @@ def rountrip_test(parser: Lark, input_to_parse: str):
     assert stringValue == input_to_parse.replace(" ", "")
 
 
+def rountrip_pretty_test(parser: Lark, ast_value):
+    print(ast_value.pretty())
+    new_ast_value = parseToASt(parser, ast_value.pretty())
+    assert ast_value.pretty() == new_ast_value.pretty()
+
+
 variableDeclarations = [
     "a : (A)",
     "b : (A->B)",
@@ -45,12 +57,12 @@ variableDeclarations = [
 
 variableDefinitions = [
     "a = (a)",
-    "b = ((a)+(b))",
+    "b = (a+b)",
     "c = (\\ x->(y))",
-    "d = (\\x -> ((a)+(b)))",
-    "e = (\\Some (x) -> (a))",
-    "f = (\\Some (x) -> ((a)+(b)))",
-    "g = (\\Some (Make (Mine) (Better) (now)) -> ((a)+(b)))",
+    "d = (\\x -> (a+b))",
+    "e = (\\Some x -> (a))",
+    "f = (\\Some x -> (a+b))",
+    "g = (\\Some (Make Mine Better now) -> (a+b))",
 ]
 
 
@@ -62,6 +74,24 @@ def test_variable_declaration(variableDeclaration):
 @pytest.mark.parametrize("variableDefinition", variableDefinitions)
 def test_variable_definition(variableDefinition):
     rountrip_test(parser_for_test, variableDefinition)
+
+
+##def test_show_gen():
+##    value = gen_top_declaration().example().pretty()
+##    print(value)
+##    assert False
+
+
+@given(value=gen_top_declaration())
+@settings(suppress_health_check=list(HealthCheck))
+def test_top_declaration(value):
+    rountrip_pretty_test(parser_for_test, value)
+
+
+@given(value=gen_top_definition())
+@settings(suppress_health_check=list(HealthCheck))
+def test_top_definition(value):
+    rountrip_pretty_test(parser_for_test, value)
 
 
 parser_for_test = load_grammar()
