@@ -82,7 +82,7 @@ class Application(Expression):
         self.free_variables = free_variables
 
     def pretty(self):
-        return f"{self.function.pretty()} ({self.argument}.pretty())"
+        return f"{self.function.pretty()} ({self.argument.pretty()})"
 
     def __str__(self):
         return repr(self)

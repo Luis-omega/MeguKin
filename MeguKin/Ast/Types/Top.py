@@ -84,7 +84,7 @@ class Constructor(Type):
         self._range = _range
 
     def pretty(self):
-        args = " ".join([f"({i.pretty()})" for i in self.types])
+        args = " , ".join([f"{i.pretty()}" for i in self.types])
         return f"{self.name} {args}"
 
     def __str__(self):
@@ -106,7 +106,7 @@ class DataType(Top):
 
     def pretty(self):
         args = " | ".join([f"{i.pretty()}" for i in self.constructors])
-        return f"data {self.name} = {args}"
+        return f"data {self.name} = ({args})"
 
     def __str__(self):
         return f"DataType({self.name},{self.constructors})"

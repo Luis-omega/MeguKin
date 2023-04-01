@@ -3,7 +3,11 @@ import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis.strategies import composite
 
-from tests.ASTgenerators import *
+from tests.ASTgenerators import (
+    gen_top_data_constructor,
+    gen_top_definition,
+    gen_top_declaration,
+)
 
 # gen_top_definition, gen_expression
 
@@ -91,6 +95,12 @@ def test_top_declaration(value):
 @given(value=gen_top_definition())
 @settings(suppress_health_check=list(HealthCheck))
 def test_top_definition(value):
+    rountrip_pretty_test(parser_for_test, value)
+
+
+@given(value=gen_top_data_constructor())
+@settings(suppress_health_check=list(HealthCheck))
+def test_top_data(value):
     rountrip_pretty_test(parser_for_test, value)
 
 

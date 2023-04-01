@@ -14,7 +14,7 @@ from MeguKin.Ast.Types.Expression import (
 
 from MeguKin.Ast.Types.PatternMatch import PatternMatchVariable, PatternMatchConstructor
 from MeguKin.Ast.Types.Type import TypeName, TypeArrow
-from MeguKin.Ast.Types.Top import Definition, Declaration
+from MeguKin.Ast.Types.Top import Definition, Declaration, DataType, Constructor
 
 from MeguKin.Reconstruction import Range
 
@@ -189,3 +189,17 @@ def gen_top_declaration(draw):
     name = draw(gen_lowercasse_identifier())
     _type = draw(gen_type())
     return Declaration(name, _type, emptyRange)
+
+
+@composite
+def gen_constructor_definition(draw):
+    name = draw(gen_capitalized_identifier())
+    types = draw(lists(gen_type(), min_size=1, max_size=6))
+    return Constructor(name, types, emptyRange)
+
+
+@composite
+def gen_top_data_constructor(draw):
+    name = draw(gen_capitalized_identifier())
+    constructors = draw(lists(gen_constructor_definition(), min_size=1, max_size=6))
+    return DataType(name, constructors, emptyRange)
