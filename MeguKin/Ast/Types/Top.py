@@ -47,7 +47,7 @@ class Declaration(Top):
         return f"{self.name} : ({self._type.pretty()})"
 
     def __str__(self):
-        return f"Declaration({self.name},{self._type})"
+        return repr(self)
 
     def __repr__(self):
         return f"Declaration({self.name},{self._type})"

@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Set
 
 from MeguKin.Reconstruction import Range
 
@@ -12,10 +12,12 @@ class PatternMatch:
 class PatternMatchVariable(PatternMatch):
     name: str
     _range: Range
+    bound_variables: Set[str]
 
-    def __init__(self, name: str, _range: Range):
+    def __init__(self, name: str, _range: Range, bound_variables: Set[str]):
         self.name = name
         self._range = _range
+        self.bound_variables = bound_variables
 
     def pretty(self):
         return f"{self.name}"
@@ -32,14 +34,31 @@ class PatternMatchConstructor(PatternMatch):
     name: str
     patterns: List["PatternMatchT"]
     _range: Range
+    bound_variables: Set[str]
 
-    def __init__(self, name: str, patterns: List["PatternMatchT"], _range: Range):
+    def __init__(
+        self,
+        name: str,
+        patterns: List["PatternMatchT"],
+        _range: Range,
+        bound_variables: Set[str],
+    ):
         self.name = name
         self.patterns = patterns
         self._range = _range
+        self.bound_variables = bound_variables
 
     def pretty(self):
-        args = " ".join([f"({i.pretty()})" for i in self.patterns])
+        def prettify(pattern: PatternMatchT):
+            if isinstance(pattern, PatternMatchConstructor):
+                if len(pattern.patterns) == 0:
+                    return pattern.pretty()
+                else:
+                    return f"({pattern.pretty()})"
+            else:
+                return pattern.pretty()
+
+        args = " ".join([prettify(i) for i in self.patterns])
         return f"{self.name} {args}"
 
     def __str__(self):

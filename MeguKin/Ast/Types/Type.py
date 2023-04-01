@@ -38,7 +38,7 @@ class TypeApplication(Type):
         self._range = _range
 
     def pretty(self):
-        return f"TypeApplication({self.function},{self.argument})"
+        raise Exception("not implemented")
 
     def __str__(self):
         return f"TypeApplication({self.function},{self.argument})"

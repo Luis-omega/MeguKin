@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Set
 
 from lark import Token
 
@@ -23,6 +23,7 @@ class Expression:
 class Literal(Expression):
     value: Token
     _range: Range
+    free_variables: Set[str] = set()
 
     def __init__(self, value: Token, _range: Range):
         self.value = value
@@ -39,14 +40,18 @@ class Literal(Expression):
 
 
 class Variable(Expression):
-    name: str
+    name: Token
     constructor: bool
     _range: Range
+    free_variables: Set[str]
 
-    def __init__(self, name: Token, constructor: bool, _range: Range):
+    def __init__(
+        self, name: Token, constructor: bool, _range: Range, free_variables: Set[str]
+    ):
         self.name = name
         self.constructor = constructor
         self._range = _range
+        self.free_variables = free_variables
 
     def pretty(self):
         return f"{self.name}"
@@ -62,11 +67,19 @@ class Application(Expression):
     function: ExpressionT
     argument: ExpressionT
     _range: Range
+    free_variables: Set[str]
 
-    def __init__(self, function: ExpressionT, argument: ExpressionT, _range: Range):
+    def __init__(
+        self,
+        function: ExpressionT,
+        argument: ExpressionT,
+        _range: Range,
+        free_variables: Set[str],
+    ):
         self.function = function
         self.argument = argument
         self._range = _range
+        self.free_variables = free_variables
 
     def pretty(self):
         return f"{self.function.pretty()} ({self.argument}.pretty())"
@@ -82,11 +95,19 @@ class Function(Expression):
     pattern: PatternMatchT
     value: ExpressionT
     _range: Range
+    free_variables: Set[str]
 
-    def __init__(self, pattern: PatternMatchT, value: ExpressionT, _range: Range):
+    def __init__(
+        self,
+        pattern: PatternMatchT,
+        value: ExpressionT,
+        _range: Range,
+        free_variables: Set[str],
+    ):
         self.value = value
         self.pattern = pattern
         self._range = _range
+        self.free_variables = free_variables
 
     def pretty(self):
         return f"\ {self.pattern.pretty()} -> ({self.value.pretty()})"
@@ -102,16 +123,22 @@ class AnnotatedExpression(Expression):
     expression: ExpressionT
     annotation: Optional[TypeT]
     _range: Range
+    free_variables: Set[str]
 
     def __init__(
-        self, expression: ExpressionT, annotation: Optional[TypeT], _range: Range
+        self,
+        expression: ExpressionT,
+        annotation: Optional[TypeT],
+        _range: Range,
+        free_variables: Set[str],
     ):
         self.expression = expression
         self.annotation = annotation
         self._range = _range
+        self.free_variables = free_variables
 
     def pretty(self):
-        return f"({self.expression}:{self.annotation})"
+        return f"({self.expression.pretty()}:{self.annotation.pretty()})"
 
     def __str__(self):
         return f"AnnotatedExpression({self.expression},{self.annotation})"
@@ -138,17 +165,28 @@ class OperatorsWithoutMeaning(Expression):
     # And in fact we can translate that with a huge cost at runtime to us...
     listOfOperatorExpression: List[Union[Token, ExpressionT]]
     _range: Range
+    free_variables: Set[str]
 
     def __init__(
-        self, listOfOperatorExpression: List[Union[Token, ExpressionT]], _range: Range
+        self,
+        listOfOperatorExpression: List[Union[Token, ExpressionT]],
+        _range: Range,
+        free_variables: Set[str],
     ):
         self.listOfOperatorExpression = listOfOperatorExpression
         self._range = _range
+        self.free_variables = free_variables
 
     def pretty(self):
+        def prettify(exp: ExpressionT):
+            if isinstance(exp, Function) or isinstance(exp, OperatorsWithoutMeaning):
+                return f"({exp.pretty()})"
+            else:
+                return exp.pretty()
+
         args = " ".join(
             [
-                f"({i.pretty()})" if isinstance(i, Expression) else i
+                prettify(i) if isinstance(i, Expression) else i
                 for i in self.listOfOperatorExpression
             ]
         )

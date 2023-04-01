@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, TypeVar
+from typing import List, Optional, Union, TypeVar, Tuple
 from functools import reduce
 
 from lark import Transformer, v_args, Token
@@ -61,13 +61,20 @@ class ToAST(Transformer):
                 expression,
                 annotation,
                 mergeRanges(expression._range, annotation._range),
+                expression.free_variables,
             )
 
     def expression_lambda(
         self, lambda_symbol, pattern: PatternMatchT, arrow, expression: ExpressionT
     ) -> Function:
         init_range = token2Range(lambda_symbol)
-        return Function(pattern, expression, mergeRanges(init_range, expression._range))
+        free_variables = expression.free_variables - pattern.bound_variables
+        return Function(
+            pattern,
+            expression,
+            mergeRanges(init_range, expression._range),
+            free_variables,
+        )
 
     def expression_literal(self, tok: Token) -> Literal:
         return Literal(tok, token2Range(tok))
@@ -75,10 +82,11 @@ class ToAST(Transformer):
     def expression_atom(self, atom: Union[Token, ExpressionT]) -> ExpressionT:
         if isinstance(atom, Token):
             if is_lowercase_token(atom):
-                return Variable(atom.value, False, token2Range(atom))
+                return Variable(atom.value, False, token2Range(atom), set(atom.value))
             elif is_capplitalized_identifier(atom):
-                return Variable(atom.value, True, token2Range(atom))
+                return Variable(atom.value, True, token2Range(atom), set(atom.value))
             else:
+                print(atom)
                 raise Exception("if you see this, someone updated the grammar")
         else:
             return atom
@@ -87,20 +95,34 @@ class ToAST(Transformer):
         # rule uses "+" so, this is guaranteed
         out = values[0]
         for value in values[1:]:
-            out = Application(out, value, mergeRanges(out._range, value._range))
+            free_variables = out.free_variables.union(value.free_variables)
+            out = Application(
+                out, value, mergeRanges(out._range, value._range), free_variables
+            )
         return out
 
     # See note about the return type [str, Expression, str, Expression,...]
     # in OperatorsWithoutMeaning
-    def expression(self, *allValues) -> ExpressionT:
+    def expression(self, *allValues: Tuple[Union[Token, ExpressionT]]) -> ExpressionT:
         match allValues:
             case [value]:
-                return value
+                if isinstance(value, Token):
+                    raise Exception("if you see this, lark parsers has a bug")
+                else:
+                    return value
             # Grammar guaranty that we always have a value
             case _:
                 arg = list(allValues)
+                free_variables = set.union(
+                    *(
+                        set(i.value) if isinstance(i, Token) else i.free_variables
+                        for i in arg
+                    )
+                )
                 return OperatorsWithoutMeaning(
-                    arg, mergeRanges(allValues[0]._range, allValues[-1]._range)
+                    arg,
+                    mergeRanges(allValues[0]._range, allValues[-1]._range),
+                    free_variables,
                 )
 
     # ------------------ PatternMatch ------------------
@@ -111,9 +133,17 @@ class ToAST(Transformer):
         for arg in args:
             if isinstance(arg, Token):
                 if is_lowercase_token(arg):
-                    out.append(PatternMatchVariable(arg.value, token2Range(arg)))
+                    out.append(
+                        PatternMatchVariable(
+                            arg.value, token2Range(arg), set(arg.value)
+                        )
+                    )
                 else:
-                    out.append(PatternMatchConstructor(arg.value, [], token2Range(arg)))
+                    out.append(
+                        PatternMatchConstructor(
+                            arg.value, [], token2Range(arg), set(arg.value)
+                        )
+                    )
             else:
                 out.append(arg)
         return out
@@ -125,20 +155,29 @@ class ToAST(Transformer):
     ) -> PatternMatchT:
         if isinstance(firstArg, Token):
             if is_lowercase_token(firstArg):
-                return PatternMatchVariable(firstArg.value, token2Range(firstArg))
+                out = PatternMatchVariable(
+                    firstArg.value, token2Range(firstArg), set(firstArg.value)
+                )
+                return out
             else:
                 if secondArg is None:
                     return PatternMatchConstructor(
-                        firstArg.value, [], token2Range(firstArg)
+                        firstArg.value, [], token2Range(firstArg), set(firstArg.value)
                     )
                 else:
                     acc = token2Range(firstArg)
+                    # we can look for shadowed variables here but that would
+                    # add complexity to code instead of simplifiying.
+                    # like, we can't report the shadowing issue here,
+                    # the we need to propagate and that is a lot.
+                    # we can store the shadowing in the pattern, but
+                    # that's not it's place.
+                    bound_variables = set(firstArg.value)
                     for i in secondArg:
                         acc = mergeRanges(acc, i._range)
+                        bound_variables = bound_variables.union(i.bound_variables)
                     return PatternMatchConstructor(
-                        firstArg.value,
-                        secondArg,
-                        acc,
+                        firstArg.value, secondArg, acc, bound_variables
                     )
         else:
             return firstArg
