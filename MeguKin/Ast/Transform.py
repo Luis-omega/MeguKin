@@ -12,6 +12,8 @@ from MeguKin.Ast.Types.Expression import (
     Function,
     OperatorsWithoutMeaning,
     ExpressionT,
+    LetBinding,
+    Let,
 )
 from MeguKin.Ast.Types.PatternMatch import (
     PatternMatchT,
@@ -64,18 +66,6 @@ class ToAST(Transformer):
                 expression.free_variables,
             )
 
-    def expression_lambda(
-        self, lambda_symbol, pattern: PatternMatchT, arrow, expression: ExpressionT
-    ) -> Function:
-        init_range = token2Range(lambda_symbol)
-        free_variables = expression.free_variables - pattern.bound_variables
-        return Function(
-            pattern,
-            expression,
-            mergeRanges(init_range, expression._range),
-            free_variables,
-        )
-
     def expression_literal(self, tok: Token) -> Literal:
         return Literal(tok, token2Range(tok))
 
@@ -103,7 +93,9 @@ class ToAST(Transformer):
 
     # See note about the return type [str, Expression, str, Expression,...]
     # in OperatorsWithoutMeaning
-    def expression(self, *allValues: Tuple[Union[Token, ExpressionT]]) -> ExpressionT:
+    def expression_operators(
+        self, *allValues: Tuple[Union[Token, ExpressionT]]
+    ) -> ExpressionT:
         match allValues:
             case [value]:
                 if isinstance(value, Token):
@@ -124,6 +116,48 @@ class ToAST(Transformer):
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                     free_variables,
                 )
+
+    def expression_lambda_operators(self, expression: ExpressionT) -> ExpressionT:
+        return expression
+
+    def expression_lambda(
+        self, lambda_symbol, pattern: PatternMatchT, arrow, expression: ExpressionT
+    ) -> Function:
+        init_range = token2Range(lambda_symbol)
+        free_variables = expression.free_variables - pattern.bound_variables
+        return Function(
+            pattern,
+            expression,
+            mergeRanges(init_range, expression._range),
+            free_variables,
+        )
+
+    def expression_let_binding(
+        self, name: Token, eq, expression: ExpressionT
+    ) -> LetBinding:
+        free_variables = expression.free_variables
+        return LetBinding(
+            name.value,
+            expression,
+            mergeRanges(token2Range(name), expression._range),
+            free_variables,
+        )
+
+    def expression_let_inside(*bindings: LetBinding) -> List[LetBinding]:
+        return list(bindings)
+
+    def expression_let_lambda(self, expression: ExpressionT) -> ExpressionT:
+        return expression
+
+    def expression_let(
+        self, let, bindings: List[LetBinding], _in, expression: ExpressionT
+    ) -> Let:
+        _range = mergeRanges(bindings[0]._range, expression._range)
+        free_variables = set.union(*(i.free_variables for i in bindings))
+        return Let(bindings, expression, _range, free_variables)
+
+    def expression(self, alternative: Union[Let, Function]) -> ExpressionT:
+        return alternative
 
     # ------------------ PatternMatch ------------------
     def pattern_match_constructor_args(

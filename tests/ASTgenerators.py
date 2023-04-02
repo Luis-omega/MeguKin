@@ -10,6 +10,8 @@ from MeguKin.Ast.Types.Expression import (
     Application,
     Function,
     OperatorsWithoutMeaning,
+    Let,
+    LetBinding,
 )
 
 from MeguKin.Ast.Types.PatternMatch import PatternMatchVariable, PatternMatchConstructor
@@ -81,7 +83,9 @@ def gen_function(draw):
     pattern = draw(gen_pattern_match())
     value = draw(gen_expression())
     free_variables = value.free_variables - pattern.bound_variables
-    return Function(pattern, value, emptyRange, free_variables)
+    return Function(pattern, value, emptyRange, free_variables) | draw(
+        gen_operators_expression()
+    )
 
 
 @composite
@@ -94,13 +98,7 @@ def gen_annotated_expression(draw):
 
 @composite
 def gen_operators_expression(draw):
-    first = draw(
-        gen_variable_lower()
-        | gen_expression_application()
-        | gen_function()
-        | gen_annotated_expression()
-        | gen_operators_expression()
-    )
+    first = draw(gen_expression())
     out = [first]
     free_variables = first.free_variables
     number_of_operators = draw(integers(0, 6))
@@ -117,8 +115,29 @@ def gen_operators_expression(draw):
 
 
 @composite
+def gen_expression_let_binding(draw):
+    name = draw(gen_lowercasse_identifier())
+    expression = draw(gen_expression())
+    return LetBinding(name, expression, emptyRange, expression.free_variables)
+
+
+@composite
+def gen_expression_let(draw):
+    bindings = draw(lists(gen_expression_let_binding(), min_size=1, max_size=6))
+    expression = draw(gen_expression())
+    free_variables = set.union(*(i.free_variables for i in bindings))
+    return Let(bindings, expression, emptyRange, free_variables)
+
+
+@composite
 def gen_expression(draw):
-    return draw(gen_operators_expression())
+    return draw(
+        gen_expression_let()
+        | gen_function()
+        | gen_operators_expression()
+        | gen_annotated_expression()
+        | gen_expression_application()
+    )
 
 
 # -------------------------------- PatternMatch -----------------------------

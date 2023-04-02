@@ -13,6 +13,7 @@ ExpressionT = Union[
     "Function",
     "AnnotatedExpression",
     "OperatorsWithoutMeaning",
+    "Let",
 ]
 
 
@@ -197,3 +198,60 @@ class OperatorsWithoutMeaning(Expression):
 
     def __repr__(self):
         return f"OperatorWithoutMeaning({self.listOfOperatorExpression})"
+
+
+class LetBinding(Expression):
+    name: str
+    expression: ExpressionT
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(
+        self,
+        name: str,
+        expression: ExpressionT,
+        _range: Range,
+        free_variables: Set[str],
+    ):
+        self.name = name
+        self.expression = expression
+        self._range = _range
+        self.free_variables = free_variables
+
+    def pretty(self):
+        return f"{self.name} in {self.expression.pretty()}"
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f"Let({self.name},{self.expression})"
+
+
+class Let(Expression):
+    bindings: List[LetBinding]
+    expression: ExpressionT
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(
+        self,
+        bindings: List[LetBinding],
+        expression: ExpressionT,
+        _range: Range,
+        free_variables: Set[str],
+    ):
+        self.bindings = bindings
+        self.expression = expression
+        self._range = _range
+        self.free_variables = free_variables
+
+    def pretty(self):
+        bindings = "".join(f"({i.pretty()})" for i in self.bindings)
+        return f"let {bindings} in {self.expression.pretty()}"
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f"Let({self.bindings},{self.expression})"
