@@ -110,7 +110,7 @@ class Function(Expression):
         self.free_variables = free_variables
 
     def pretty(self):
-        return f"\ {self.pattern.pretty()} -> ({self.value.pretty()})"
+        return f"\\ {self.pattern.pretty()} -> ({self.value.pretty()})"
 
     def __str__(self):
         return f"Function({self.pattern},{self.value})"
