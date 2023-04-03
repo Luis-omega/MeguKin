@@ -1,6 +1,6 @@
 from typing import List
 
-from hypothesis.strategies import composite, integers, from_regex, text, lists
+from hypothesis.strategies import composite, integers, from_regex, text, lists, integers
 
 # from Megukin.AST.Types import
 from MeguKin.Ast.Types.Expression import (
@@ -25,7 +25,7 @@ emptyRange = Range(0, 0, 0, 0, 0, 0)
 
 @composite
 def gen_literal(draw):
-    generated = draw(integers())
+    generated = draw(integers(0))
     return Literal(str(generated), emptyRange)
 
 
@@ -71,6 +71,12 @@ def gen_variable_lower(draw):
 
 
 @composite
+def gen_variable_operator(draw):
+    value = draw(gen_operator())
+    return Variable(value, False, emptyRange, set(value))
+
+
+@composite
 def gen_expression_application(draw):
     function = draw(gen_function())
     argument = draw(gen_expression())
@@ -83,9 +89,7 @@ def gen_function(draw):
     pattern = draw(gen_pattern_match())
     value = draw(gen_expression())
     free_variables = value.free_variables - pattern.bound_variables
-    return Function(pattern, value, emptyRange, free_variables) | draw(
-        gen_operators_expression()
-    )
+    return Function(pattern, value, emptyRange, free_variables)
 
 
 @composite
@@ -132,11 +136,14 @@ def gen_expression_let(draw):
 @composite
 def gen_expression(draw):
     return draw(
-        gen_expression_let()
+        gen_literal()
+        | gen_variable_lower()
+        | gen_variable_operator()
         | gen_function()
-        | gen_operators_expression()
         | gen_annotated_expression()
+        | gen_operators_expression()
         | gen_expression_application()
+        | gen_expression_let()
     )
 
 

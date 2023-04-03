@@ -8,6 +8,7 @@ from tests.ASTgenerators import (
     gen_top_definition,
     gen_top_declaration,
 )
+from tests.ASTgenerators import *
 
 # gen_top_definition, gen_expression
 
@@ -80,10 +81,11 @@ def test_variable_definition(variableDefinition):
     rountrip_test(parser_for_test, variableDefinition)
 
 
-##def test_show_gen():
-##    value = gen_top_declaration().example().pretty()
-##    print(value)
-##    assert False
+def test_show_gen():
+    for i in range(10):
+        value = gen_expression().example().pretty()
+        print(value)
+    assert False
 
 
 @given(value=gen_top_declaration())

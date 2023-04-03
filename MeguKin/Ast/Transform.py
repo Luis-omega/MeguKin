@@ -75,6 +75,8 @@ class ToAST(Transformer):
                 return Variable(atom.value, False, token2Range(atom), set(atom.value))
             elif is_capplitalized_identifier(atom):
                 return Variable(atom.value, True, token2Range(atom), set(atom.value))
+            elif atom.type == "OPERATOR":
+                return Variable(atom.value, False, token2Range(atom), set(atom.value))
             else:
                 print(atom)
                 raise Exception("if you see this, someone updated the grammar")
@@ -101,19 +103,19 @@ class ToAST(Transformer):
                 if isinstance(value, Token):
                     raise Exception("if you see this, lark parsers has a bug")
                 else:
-                    return value
+                    return value  # type: ignore
             # Grammar guaranty that we always have a value
             case _:
                 arg = list(allValues)
                 free_variables = set.union(
                     *(
-                        set(i.value) if isinstance(i, Token) else i.free_variables
+                        set(i.value) if isinstance(i, Token) else i.free_variables  # type: ignore
                         for i in arg
                     )
                 )
                 return OperatorsWithoutMeaning(
-                    arg,
-                    mergeRanges(allValues[0]._range, allValues[-1]._range),
+                    arg,  # type: ignore
+                    mergeRanges(allValues[0]._range, allValues[-1]._range),  # type: ignore
                     free_variables,
                 )
 
@@ -143,7 +145,7 @@ class ToAST(Transformer):
             free_variables,
         )
 
-    def expression_let_inside(*bindings: LetBinding) -> List[LetBinding]:
+    def expression_let_inside(self, *bindings: LetBinding) -> List[LetBinding]:
         return list(bindings)
 
     def expression_let_lambda(self, expression: ExpressionT) -> ExpressionT:

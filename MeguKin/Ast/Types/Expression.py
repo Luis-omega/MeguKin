@@ -55,7 +55,11 @@ class Variable(Expression):
         self.free_variables = free_variables
 
     def pretty(self):
-        return f"{self.name}"
+        name = self.name
+        if ("a" <= name[0] and name[0] <= "z") or ("A" <= name[0] and name[0] <= "Z"):
+            return f"{self.name}"
+        else:
+            return f"({self.name})"
 
     def __str__(self):
         return f"Variable({self.name})"
@@ -83,7 +87,10 @@ class Application(Expression):
         self.free_variables = free_variables
 
     def pretty(self):
-        return f"{self.function.pretty()} ({self.argument.pretty()})"
+        if isinstance(self.function, Literal) or isinstance(self.function, Variable):
+            return f"{self.function.pretty()} {self.argument.pretty()}"
+        else:
+            return f"({self.function.pretty()}) ({self.argument.pretty()})"
 
     def __str__(self):
         return repr(self)
@@ -180,7 +187,11 @@ class OperatorsWithoutMeaning(Expression):
 
     def pretty(self):
         def prettify(exp: ExpressionT):
-            if isinstance(exp, Function) or isinstance(exp, OperatorsWithoutMeaning):
+            if (
+                isinstance(exp, Function)
+                or isinstance(exp, OperatorsWithoutMeaning)
+                or isinstance(exp, Let)
+            ):
                 return f"({exp.pretty()})"
             else:
                 return exp.pretty()
@@ -219,7 +230,7 @@ class LetBinding(Expression):
         self.free_variables = free_variables
 
     def pretty(self):
-        return f"{self.name} in {self.expression.pretty()}"
+        return f"{self.name} = {self.expression.pretty()}"
 
     def __str__(self):
         return repr(self)
@@ -248,7 +259,7 @@ class Let(Expression):
 
     def pretty(self):
         bindings = "".join(f"({i.pretty()})" for i in self.bindings)
-        return f"let {bindings} in {self.expression.pretty()}"
+        return f"let {bindings} in ({self.expression.pretty()})"
 
     def __str__(self):
         return repr(self)

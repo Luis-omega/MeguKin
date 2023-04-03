@@ -83,6 +83,7 @@ expression_literal : INT
 
 expression_atom: LOWERCASSE_IDENTIFIER
   | CAPITALIZED_IDENTIFIER
+  | parens{OPERATOR}
   | expression_literal
   | parens{expression_parens}
 
