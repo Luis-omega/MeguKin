@@ -95,7 +95,7 @@ expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
 expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
 
-expression_parens: expression [COLON type_expression]
+expression_parens: expression [COLON type_expression_inner]
 
 expression_type_arg : "@" type_atom
 
@@ -154,11 +154,11 @@ pattern_match_function_args: pattern_match_function_args_atoms | pattern_match_f
 
 // --------------------- Data  ---------------------
 
-data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression,","}]
+data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression_inner,","}]
 
 data_type_constructors: sep_by1{data_type_constructor, PIPE} 
 
-data_type_constructor_args : sep_by1{type_expression,","} | type_atom+
+data_type_constructor_args : sep_by1{type_expression_inner,","} | type_atom+
 
 // --------------------- Types  ---------------------
 
@@ -169,26 +169,29 @@ type_variable : VARIABLE_IDENTIFIER
 
 type_concrete_type :CAPITALIZED_IDENTIFIER
 
-type_atom : type_variable | type_concrete_type | parens{type_expression} 
+type_atom : type_variable | type_concrete_type | parens{type_expression_inner} 
 
 type_application : type_atom+
 
 type_operators : (type_application type_operator)* type_application
 
-type_expression: sep_by1{type_operators,RIGHT_ARROW}
+type_expression_inner: sep_by1{type_operators,RIGHT_ARROW}
+
+type_expression_top : ["forall" type_data_type_args] type_expression_inner
+
 
 
 type_data_type_args : type_variable+
 
 // --------------------- Top  ---------------------
 
-top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_expression}
+top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_expression_top}
 
 top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL parens{expression}
 
 top_data_type.2: "data" (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL parens{data_type_constructors}
 
-top_type_synonym : "type" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL type_expression
+top_type_synonym : "type" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL type_expression_inner
 
 top_type_new_type : "newtype" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL parens{data_type_constructor}
 
