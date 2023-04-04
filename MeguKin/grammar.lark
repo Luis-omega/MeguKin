@@ -2,7 +2,8 @@ SPACES : /\s/
 
 %ignore SPACES
 
-COMMENT_REST_OF_LINE: "#" /[^\n]*/ "\n"
+// Python re doesn't match "\n" by defect when using `.`
+COMMENT_REST_OF_LINE: "#" /.*/ "\n"
 
 %ignore COMMENT_REST_OF_LINE
 
@@ -24,7 +25,8 @@ CAPITALIZED_IDENTIFIER : UPPERCASES IDENTIFIER_CHARACTER*
 
 LOWERCASSE_IDENTIFIER_HEAD: /[a-z]/
 
-LOWERCASSE_IDENTIFIER: LOWERCASSE_IDENTIFIER_HEAD IDENTIFIER_CHARACTER*
+VARIABLE_IDENTIFIER: LOWERCASSE_IDENTIFIER_HEAD IDENTIFIER_CHARACTER*
+
 
 HOLE: "_"
 
@@ -56,7 +58,7 @@ RBRACKET:"]"
 OPERATOR_ALONE_CHARACTER : "+" | "-" | "~" | "/" | "!" | "?" 
   | "¡" | "¿" | "$" | "¬" | ">" | "<" | "%" | "&" | "*"
 
-OPERATOR_NOT_ALONE_CHARACTER: "=" | "\\" | "|"
+OPERATOR_NOT_ALONE_CHARACTER: EQUAL | LAMBDA | PIPE
 
 // The "=" symbol alone is interpreted as "EQUAL" but if it's part of an operator
 // like the case of ">=" or "<=" then we need to interpret it as operator.
@@ -64,7 +66,17 @@ OPERATOR_NOT_ALONE_CHARACTER: "=" | "\\" | "|"
 OPERATOR.1: OPERATOR_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_ALONE_CHARACTER)*
   | OPERATOR_NOT_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_ALONE_CHARACTER)+
 
-INFIX_IDENTIFIER : "`" (LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER) "`"
+INFIX_IDENTIFIER : "`" (VARIABLE_IDENTIFIER | CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED | PREFIXED_VARIABLE) "`"
+
+MODULE_PREFIX.3: (CAPITALIZED_IDENTIFIER ".")+
+
+PREFIXED_OPERATOR.2 : MODULE_PREFIX OPERATOR
+
+PREFIXED_VARIABLE.2 : MODULE_PREFIX VARIABLE_IDENTIFIER
+
+PREFIXED_CAPITALIZED : MODULE_PREFIX CAPITALIZED_IDENTIFIER
+
+
 
 // --------------------- Combinators  ---------------------
 
@@ -77,24 +89,40 @@ sep_by1{p,sep}: p [(sep p)+]
 
 // --------------------- Expressions  ---------------------
 
+expression_operator : PREFIXED_OPERATOR | OPERATOR |INFIX_IDENTIFIER
+
+expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
+
+expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
+
 expression_parens: expression [COLON type_expression]
+
+expression_type_arg : "@" type_atom
 
 expression_literal : INT
 
-expression_atom: LOWERCASSE_IDENTIFIER
-  | CAPITALIZED_IDENTIFIER
-  | parens{OPERATOR}
+expression_atom: expression_variable
+  | expression_constructor
   | expression_literal
+  | expression_type_arg
+  | parens{expression_operator}
   | parens{expression_parens}
 
 expression_application: expression_atom+
 
-expression_operators: expression_application ((OPERATOR|INFIX_IDENTIFIER) expression_application)*
+expression_operators: (expression_application expression_operator)* expression_application
+
+expression_case_single : pattern_match RIGHT_ARROW expression
+
+expression_case_cases : parens{expression_case_single}+
+
+expression_case: "case" expression "of" parens{expression_case_cases}
+  | expression_operators -> expression_case_operators
 
 expression_lambda : LAMBDA pattern_match RIGHT_ARROW parens{expression}
-  | expression_operators -> expression_lambda_operators
+  | expression_case -> expression_lambda_case
 
-expression_let_binding: LOWERCASSE_IDENTIFIER EQUAL expression
+expression_let_binding: VARIABLE_IDENTIFIER EQUAL expression
 
 expression_let_inside: parens{expression_let_binding}+
 
@@ -105,15 +133,24 @@ expression: expression_let
 
 // --------------------- PatternMatch  ---------------------
 
-pattern_match_constructor_args: (LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{pattern_match})+
+pattern_match_constructor_identifier : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
-// We can just use something like (CAPITALIZED_IDENTIFIER pattern_match_inner_paren*),
-// but then at transform time it would need a arbitrary size tupe in the arguments 
-// of the processin function for this rule.
-// We can put the "*" in the pattern_match_constructor_args, but then that rule would
-// be a rule producing the empty word in the grammar and that is bad also.
-pattern_match : LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | CAPITALIZED_IDENTIFIER pattern_match_constructor_args | parens{pattern_match}
+pattern_match_variable: VARIABLE_IDENTIFIER
 
+pattern_match_literal: INT
+
+pattern_match_atom: pattern_match_literal| pattern_match_variable | pattern_match_constructor_identifier | parens{pattern_match}
+
+pattern_match_constructor_application: pattern_match_constructor_identifier pattern_match_atom+
+  | pattern_match_atom
+
+pattern_match : pattern_match_constructor_application
+
+
+pattern_match_function_args_atoms: pattern_match_atom+ 
+pattern_match_function_args_comes: (pattern_match "," )+ pattern_match
+
+pattern_match_function_args: pattern_match_function_args_atoms | pattern_match_function_args_comes
 
 // --------------------- Data  ---------------------
 
@@ -121,21 +158,41 @@ data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression,","}]
 
 data_type_constructors: sep_by1{data_type_constructor, PIPE} 
 
+data_type_constructor_args : sep_by1{type_expression,","} | type_atom+
+
 // --------------------- Types  ---------------------
 
-// This is for the time when we allow type variables
-// type_atom: LOWERCASSE_IDENTIFIER | CAPITALIZED_IDENTIFIER | parens{type_expression}
+// Shall we allow `a `Either` b` to be `Either a b`?
+type_operator : PREFIXED_OPERATOR | OPERATOR 
 
-type_atom : CAPITALIZED_IDENTIFIER | parens{type_expression}
+type_variable : VARIABLE_IDENTIFIER
 
-type_expression: sep_by1{type_atom,RIGHT_ARROW}
+type_concrete_type :CAPITALIZED_IDENTIFIER
+
+type_atom : type_variable | type_concrete_type | parens{type_expression} 
+
+type_application : type_atom+
+
+type_operators : (type_application type_operator)* type_application
+
+type_expression: sep_by1{type_operators,RIGHT_ARROW}
+
+
+type_data_type_args : type_variable+
 
 // --------------------- Top  ---------------------
 
-top_variable_declaration: LOWERCASSE_IDENTIFIER COLON parens{type_expression}
+top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_expression}
 
-top_variable_definition: LOWERCASSE_IDENTIFIER EQUAL parens{expression}
+top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL parens{expression}
 
-top_data_type.2: "data" CAPITALIZED_IDENTIFIER EQUAL parens{data_type_constructors}
+top_data_type.2: "data" (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL parens{data_type_constructors}
 
-top: (top_variable_definition | top_variable_declaration | top_data_type)*
+top_type_synonym : "type" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL type_expression
+
+top_type_new_type : "newtype" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL parens{data_type_constructor}
+
+top_operator_fixity : "operator" OPERATOR ("type"|"term") INT ("left"|"right"|"none")
+
+
+top: (top_variable_definition | top_variable_declaration | top_data_type | top_type_synonym | top_type_new_type | top_operator_fixity)*
