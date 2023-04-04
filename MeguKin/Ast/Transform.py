@@ -51,7 +51,11 @@ class ToAST(Transformer):
     def parens(self, start, value: T, end) -> T:
         return value
 
+    def brackets(self, start, value: T, end) -> T:
+        return value
+
     # ------------------ Expressions ------------------
+    def expression_operator()
 
     def expression_parens(
         self, expression: ExpressionT, colon=None, annotation: Optional[TypeT] = None

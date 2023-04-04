@@ -7,6 +7,8 @@ from MeguKin.Ast.Types.Type import TypeT
 from MeguKin.Ast.Types.PatternMatch import PatternMatchT
 
 ExpressionT = Union[
+    "OperatorVariable",
+    "OperatorImportedVariable",
     "Literal",
     "Variable",
     "Application",
@@ -34,10 +36,83 @@ class Literal(Expression):
         return f"{self.value}"
 
     def __str__(self):
-        return f"Int({self.value})"
+        return f"Literal({self.value})"
 
     def __repr__(self):
-        return f"Int({self.value})"
+        return f"Literal({self.value})"
+
+
+class OperatorVariable(Expression):
+    name: Union["PrefixedVariable", str]
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(self, name: Union["PrefixedVariable", str], _range: Range):
+        self.name = name
+        self._range = _range
+        if isinstance(name, str):
+            self.free_variables = set(name)
+        else:
+            self.free_variables = name.free_variables
+
+    def pretty(self):
+        return f"{self.name}"
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f"OperatorVariable({self.name},{self._range})"
+
+
+class OperatorInfix(Expression):
+    content: Union["Variable", "Constructor"]
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(self, name: str, _range: Range, free_variables: Set[str]) -> None:
+        self.name = name
+        self._range = _range
+        self.free_variables = free_variables
+
+    def pretty(self):
+        name = self.name
+        if ("a" <= name[0] and name[0] <= "z") or ("A" <= name[0] and name[0] <= "Z"):
+            return f"{self.name}"
+        else:
+            return f"({self.name})"
+
+    def __str__(self):
+        return f"Variable({self.name})"
+
+    def __repr__(self):
+        return f"Variable({self.name})"
+
+
+class PrefixedVariable(Expression):
+    module_prefix: str
+    name: str
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(self, module_prefix: str, name: str, _range: Range) -> None:
+        self.name = name
+        self._range = _range
+        self.free_variables = set(name)
+
+    def pretty(self):
+        return f"{self.module_prefix}.{self.name}"
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return (
+            f"OperatorImportedVariable({self.module_prefix},{self.name},{self._range})"
+        )
+
+
+# For here onwards I didn't touch it
 
 
 class Variable(Expression):
