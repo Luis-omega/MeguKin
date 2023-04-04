@@ -9,7 +9,7 @@ pythonFiles=$(find MeguKin/ tests/ -name "*.py")
 
 pythonSrc=$(find MeguKin/ -name "*.py")
 
-test: install
+test:
 	@${sourceEnv};pytest
 
 install: $(pythonSrc)
@@ -27,3 +27,5 @@ format:
 requirements: 
 	@${sourceEnv};pip freeze > requirements.txt
 
+watch:
+	@${sourceEnv};while sleep 0.5; do ls MeguKin/**/*.py tests/*.py | entr -d make test; done
