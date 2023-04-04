@@ -11,11 +11,12 @@ def load_grammar() -> Lark:
             grammar,
             start=startSymbols,
             debug=True,
+            cache=None,
             propagate_positions=True,
             maybe_placeholders=True,
             keep_all_tokens=True,
             parser="lalr",
-            lexer="contextual",
+            lexer="basic",
         )
         return parser
 
@@ -25,11 +26,16 @@ if "__main__" == __name__:
     import sys
 
     if len(sys.argv) == 2:
-        try:
-            result = parser.parse(sys.argv[1])
+        result = parser.parse(sys.argv[1])
+        print(result.pretty())
+        # astResult = ToAST().transform(result)
+        # print(astResult)
+        # print(astResult.pretty())
+    else:
+        with open("grammar_test") as test_file:
+            content = test_file.read()
+            result = parser.parse(content)
             print(result.pretty())
-            astResult = ToAST().transform(result)
-            print(astResult)
-            print(astResult.pretty())
-        except Exception as e:
-            print(e)
+        # astResult = ToAST().transform(result)
+        # print(astResult)
+        # print(astResult.pretty())

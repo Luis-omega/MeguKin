@@ -29,3 +29,6 @@ requirements:
 
 watch:
 	@${sourceEnv};while sleep 0.5; do ls MeguKin/**/*.py tests/*.py | entr -d make test; done
+
+clean_cache:
+	rm -rf build MeguKin.egg-info .hypothesis .mypy_cache .pytest_cache .ropeproject
