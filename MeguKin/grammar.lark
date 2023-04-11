@@ -55,6 +55,8 @@ RBRACE:"}"
 LBRACKET:"["
 RBRACKET:"]"
 
+COME:","
+
 OPERATOR_ALONE_CHARACTER : "+" | "-" | "~" | "/" | "!" | "?" 
   | "¡" | "¿" | "$" | "¬" | ">" | "<" | "%" | "&" | "*"
 
@@ -89,6 +91,12 @@ sep_by1{p,sep}: p [(sep p)+]
 
 // --------------------- Expressions  ---------------------
 
+expression_record_item : VARIABLE_IDENTIFIER COLON expression
+
+expression_record_inner : sep_by1{expression_record_item,COME}
+
+expression_record : braces{expression_record_inner}
+
 expression_operator : PREFIXED_OPERATOR | OPERATOR |INFIX_IDENTIFIER
 
 expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
@@ -105,12 +113,22 @@ expression_atom: expression_variable
   | expression_constructor
   | expression_literal
   | expression_type_arg
+  | expression_record
   | parens{expression_operator}
   | parens{expression_parens}
 
-expression_application: expression_atom+
+expression_selector: expression_atom ("." VARIABLE_IDENTIFIER)*
 
-expression_operators: (expression_application expression_operator)* expression_application
+expression_application: expression_selector+
+
+expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression
+
+expression_record_update_inner : sep_by1{expression_record_update_item,COME}
+
+expression_record_update : expression_application braces{expression_record_update_inner}
+  | expression_application
+
+expression_operators: (expression_record_update expression_operator)* expression_record_update
 
 expression_case_single : pattern_match RIGHT_ARROW expression
 
@@ -162,14 +180,21 @@ data_type_constructor_args : sep_by1{type_expression_inner,","} | type_atom+
 
 // --------------------- Types  ---------------------
 
+
+type_record_item : VARIABLE_IDENTIFIER COLON type_expression_inner
+
+type_record_inner : sep_by1{type_record_item,COME}
+
+type_record : braces{type_record_inner}
+
 // Shall we allow `a `Either` b` to be `Either a b`?
 type_operator : PREFIXED_OPERATOR | OPERATOR 
 
 type_variable : VARIABLE_IDENTIFIER
 
-type_concrete_type :CAPITALIZED_IDENTIFIER
+type_concrete_type :CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
-type_atom : type_variable | type_concrete_type | parens{type_expression_inner} 
+type_atom : type_variable | type_concrete_type | parens{type_expression_inner} | type_record
 
 type_application : type_atom+
 
@@ -177,15 +202,47 @@ type_operators : (type_application type_operator)* type_application
 
 type_expression_inner: sep_by1{type_operators,RIGHT_ARROW}
 
-type_expression_top : ["forall" type_data_type_args] type_expression_inner
+type_scheme : ["forall" type_data_type_args] type_expression_inner
 
 
 
 type_data_type_args : type_variable+
 
+
+// --------------------- Modules ---------------------
+import_constructor : CAPITALIZED_IDENTIFIER 
+
+import_constructors : sep_by1{import_constructor,COME}
+
+import_type : CAPITALIZED_IDENTIFIER [parens{import_constructors}]
+
+import_function : VARIABLE_IDENTIFIER
+
+import_operator :["type"] OPERATOR
+
+module_import : import_type | import_function | import_operator
+
+module_imports : sep_by1{module_import,COME}
+
+export_module : PREFIXED_CAPITALIZED
+
+export_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
+
+export_constructors : sep_by1{export_constructor,COME}
+
+export_type : (CAPITALIZED_IDENTIFIER| PREFIXED_CAPITALIZED) [parens{export_constructors}]
+
+export_function : PREFIXED_VARIABLE | VARIABLE_IDENTIFIER
+
+export_operator : ["type"] (PREFIXED_OPERATOR | OPERATOR)
+
+module_export : export_type | export_function | export_operator
+
+module_exports : sep_by1{module_export,COME}
+
 // --------------------- Top  ---------------------
 
-top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_expression_top}
+top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_scheme}
 
 top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL parens{expression}
 
@@ -197,5 +254,10 @@ top_type_new_type : "newtype" CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL
 
 top_operator_fixity : "operator" OPERATOR ("type"|"term") INT ("left"|"right"|"none")
 
+top_module : "module" (PREFIXED_CAPITALIZED|CAPITALIZED_IDENTIFIER) [parens{module_exports}] "where"
 
-top: (top_variable_definition | top_variable_declaration | top_data_type | top_type_synonym | top_type_new_type | top_operator_fixity)*
+top_import : "import" PREFIXED_CAPITALIZED [parens{module_imports}] [ "unqualified" | ("as" (PREFIXED_CAPITALIZED | CAPITALIZED_IDENTIFIER))]
+
+top_imports : top_import+
+
+top: top_module [top_imports] (top_variable_definition | top_variable_declaration | top_data_type | top_type_synonym | top_type_new_type | top_operator_fixity)*

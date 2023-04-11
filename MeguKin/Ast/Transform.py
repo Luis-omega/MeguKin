@@ -55,7 +55,7 @@ class ToAST(Transformer):
         return value
 
     # ------------------ Expressions ------------------
-    def expression_operator()
+    # def expression_operator()
 
     def expression_parens(
         self, expression: ExpressionT, colon=None, annotation: Optional[TypeT] = None

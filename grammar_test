@@ -1,3 +1,5 @@
+module Fib(fib1,fib2,linear_fib) where
+
 fib1 : (Int -> Int)
 fib1 = 
   (\ n -> 
@@ -32,3 +34,13 @@ linear_fib 0 = (1)
 linear_fib 1 = (1)
 linear_fib n = (linear_fib_aux 1 1 (FibCounter (n-1)))
 
+
+simple =(r{val=2})
+
+record_fib_aux : (Uint -> Uint -> {counter:Uint}->Uint)
+record_fib_aux n1 n2 r = (
+  case r.counter of (
+    (0 -> n2)
+    (n-> record_fib_aux (n2) (n2+n1) (r{var=2,var2=3}))
+    )
+  )
