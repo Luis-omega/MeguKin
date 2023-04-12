@@ -1,16 +1,19 @@
-from typing import Optional, List, Union, Set
+from typing import Optional, Set, Union
 
 from lark import Token
 
-from MeguKin.Reconstruction import Range
+from MeguKin.Reconstruction import Range, token2Range, mergeRanges
 from MeguKin.Ast.Types.Type import TypeT
 from MeguKin.Ast.Types.PatternMatch import PatternMatchT
 
 ExpressionT = Union[
-    "OperatorVariable",
-    "OperatorImportedVariable",
     "Literal",
     "Variable",
+    "Operator",
+    "ConstructorName",
+    "RecordUpdate",
+    "Record",
+    "ExpressionTypeArgument",
     "Application",
     "Function",
     "AnnotatedExpression",
@@ -42,105 +45,165 @@ class Literal(Expression):
         return f"Literal({self.value})"
 
 
-class OperatorVariable(Expression):
-    name: Union["PrefixedVariable", str]
-    _range: Range
-    free_variables: Set[str]
-
-    def __init__(self, name: Union["PrefixedVariable", str], _range: Range):
-        self.name = name
-        self._range = _range
-        if isinstance(name, str):
-            self.free_variables = set(name)
-        else:
-            self.free_variables = name.free_variables
-
-    def pretty(self):
-        return f"{self.name}"
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return f"OperatorVariable({self.name},{self._range})"
-
-
-class OperatorInfix(Expression):
-    content: Union["Variable", "Constructor"]
-    _range: Range
-    free_variables: Set[str]
-
-    def __init__(self, name: str, _range: Range, free_variables: Set[str]) -> None:
-        self.name = name
-        self._range = _range
-        self.free_variables = free_variables
-
-    def pretty(self):
-        name = self.name
-        if ("a" <= name[0] and name[0] <= "z") or ("A" <= name[0] and name[0] <= "Z"):
-            return f"{self.name}"
-        else:
-            return f"({self.name})"
-
-    def __str__(self):
-        return f"Variable({self.name})"
-
-    def __repr__(self):
-        return f"Variable({self.name})"
-
-
-class PrefixedVariable(Expression):
-    module_prefix: str
+class Variable(Expression):
+    prefix: list[str]
     name: str
     _range: Range
     free_variables: Set[str]
 
-    def __init__(self, module_prefix: str, name: str, _range: Range) -> None:
+    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
+        self.prefix = prefix
         self.name = name
         self._range = _range
-        self.free_variables = set(name)
+        self.free_variables = set(str(self))
 
-    def pretty(self):
-        return f"{self.module_prefix}.{self.name}"
+    @staticmethod
+    def from_lark_token(token: Token) -> "Variable":
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return Variable(prefix, name, _range)
+
+    def __str__(self):
+        prefix = ".".join(self.prefix)
+        return f"{prefix}.{self.name}"
+
+    def __repr__(self):
+        return (
+            f"Variable({self.prefix},{self.name},{self._range},{self.free_variables})"
+        )
+
+
+class Operator(Expression):
+    prefix: list[str]
+    name: str
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
+        self.prefix = prefix
+        self.name = name
+        self._range = _range
+        self.free_variables = set(str(self))
+
+    @staticmethod
+    def from_lark_token(token: Token) -> "Operator":
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return Operator(prefix, name, _range)
+
+    def __str__(self):
+        prefix = ".".join(self.prefix)
+        return f"{prefix}.{self.name}"
+
+    def __repr__(self):
+        return (
+            f"Operator({self.prefix},{self.name},{self._range},{self.free_variables})"
+        )
+
+
+class ConstructorName(Expression):
+    prefix: list[str]
+    name: str
+    _range: Range
+    free_variables: Set[str]
+
+    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
+        self.prefix = prefix
+        # shall we add `assert name[0].isupper()` here?
+        self.name = name
+        self._range = _range
+        self.free_variables = set(str(self))
+
+    @staticmethod
+    def from_lark_token(token: Token) -> "ConstructorName":
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return ConstructorName(prefix, name, _range)
+
+    def __str__(self):
+        prefix = ".".join(self.prefix)
+        return f"{prefix}.{self.name}"
+
+    def __repr__(self):
+        return f"ConstructorName({self.prefix},{self.name},{self._range},{self.free_variables})"
+
+
+class RecordUpdate(Expression):
+    _map: list[tuple[str, Range, ExpressionT]]
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(self, _map: list[tuple[str, Range, ExpressionT]]) -> None:
+        self._map = _map
+        self._range = mergeRanges(_map[-1][1], _map[0][1])
+        self.free_variables = set(*(i[2] for i in _map))
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return (
-            f"OperatorImportedVariable({self.module_prefix},{self.name},{self._range})"
-        )
+        return f"RecordUpdate({self._map})"
 
 
-# For here onwards I didn't touch it
+class Record(Expression):
+    _map: list[tuple[str, Range, Optional[ExpressionT]]]
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(self, _map: list[tuple[str, Range, Optional[ExpressionT]]]) -> None:
+        self._map = _map
+        self._range = mergeRanges(_map[-1][1], _map[0][1])
+        self.free_variables = set(*(i[2] for i in _map))
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f"RecordUpdate({self._map})"
 
 
-class Variable(Expression):
-    name: Token
-    constructor: bool
+class AnnotatedExpression(Expression):
+    expression: ExpressionT
+    annotation: Optional[TypeT]
     _range: Range
     free_variables: Set[str]
 
     def __init__(
-        self, name: Token, constructor: bool, _range: Range, free_variables: Set[str]
+        self,
+        expression: ExpressionT,
+        annotation: Optional[TypeT],
+        _range: Range,
+        free_variables: Set[str],
     ):
-        self.name = name
-        self.constructor = constructor
+        self.expression = expression
+        self.annotation = annotation
         self._range = _range
         self.free_variables = free_variables
 
     def pretty(self):
-        name = self.name
-        if ("a" <= name[0] and name[0] <= "z") or ("A" <= name[0] and name[0] <= "Z"):
-            return f"{self.name}"
-        else:
-            return f"({self.name})"
+        return f"({self.expression.pretty()}:{self.annotation.pretty()})"
 
     def __str__(self):
-        return f"Variable({self.name})"
+        return f"AnnotatedExpression({self.expression},{self.annotation})"
 
     def __repr__(self):
-        return f"Variable({self.name})"
+        return f"AnnotatedExpression({self.expression},{self.annotation})"
+
+
+class ExpressionTypeArgument(Expression):
+    _type: TypeT
+    _range: Range
+    free_variables: set[str] = set()
+
+    def __init__(self, _type: TypeT, _range: Range):
+        self._type = _type
+        self._range = _range
 
 
 class Application(Expression):
@@ -200,34 +263,6 @@ class Function(Expression):
 
     def __repr__(self):
         return f"Function({self.pattern},{self.value})"
-
-
-class AnnotatedExpression(Expression):
-    expression: ExpressionT
-    annotation: Optional[TypeT]
-    _range: Range
-    free_variables: Set[str]
-
-    def __init__(
-        self,
-        expression: ExpressionT,
-        annotation: Optional[TypeT],
-        _range: Range,
-        free_variables: Set[str],
-    ):
-        self.expression = expression
-        self.annotation = annotation
-        self._range = _range
-        self.free_variables = free_variables
-
-    def pretty(self):
-        return f"({self.expression.pretty()}:{self.annotation.pretty()})"
-
-    def __str__(self):
-        return f"AnnotatedExpression({self.expression},{self.annotation})"
-
-    def __repr__(self):
-        return f"AnnotatedExpression({self.expression},{self.annotation})"
 
 
 class OperatorsWithoutMeaning(Expression):

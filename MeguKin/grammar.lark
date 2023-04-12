@@ -92,25 +92,28 @@ sep_by1{p,sep}: p [(sep p)+]
 // --------------------- Expressions  ---------------------
 
 
-expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression | VARIABLE_IDENTIFIER
+expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression
 
 expression_record_update_inner : sep_by1{expression_record_update_item,COME}
 
 expression_record_update :  braces{expression_record_update_inner}
 
 expression_record_item : VARIABLE_IDENTIFIER COLON expression
+  | VARIABLE_IDENTIFIER -> expression_record_item_single
 
 expression_record_inner : sep_by1{expression_record_item,COME}
 
 expression_record : braces{expression_record_inner}
 
-expression_operator : PREFIXED_OPERATOR | OPERATOR |INFIX_IDENTIFIER
+expression_operator : PREFIXED_OPERATOR 
+  | OPERATOR 
+  |INFIX_IDENTIFIER -> expression_operator_identifier
 
 expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
 expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
 
-expression_parens: expression [COLON type_expression_inner]
+expression_annotation: expression [COLON type_expression_inner]
 
 expression_type_arg : "@" type_atom
 
@@ -123,7 +126,7 @@ expression_atom: expression_variable
   | expression_record_update
   | expression_record
   | parens{expression_operator}
-  | parens{expression_parens}
+  | parens{expression_annotation}
 
 expression_selector: expression_atom ("." VARIABLE_IDENTIFIER)*
 

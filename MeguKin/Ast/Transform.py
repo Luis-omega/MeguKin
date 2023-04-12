@@ -3,14 +3,19 @@ from functools import reduce
 
 from lark import Transformer, v_args, Token
 
-from MeguKin.Reconstruction import mergeRanges, token2Range
+from MeguKin.Reconstruction import mergeRanges, token2Range, Range
 from MeguKin.Ast.Types.Expression import (
-    AnnotatedExpression,
-    Variable,
     Literal,
+    Variable,
+    Operator,
+    ConstructorName,
+    RecordUpdate,
+    Record,
+    ExpressionTypeArgument,
     Application,
     Function,
     OperatorsWithoutMeaning,
+    AnnotatedExpression,
     ExpressionT,
     LetBinding,
     Let,
@@ -35,13 +40,22 @@ def is_capplitalized_identifier(token: Token) -> bool:
     return token.type == "CAPITALIZED_IDENTIFIER"
 
 
+class ToASTException(Exception):
+    pass
+
+
+missing_case_exception_message = (
+    "If you see this something was modified in the grammar of the language."
+)
+
+
 @v_args(inline=True)
 class ToAST(Transformer):
     # ------------------ Combinators ------------------
     # Typing this is tricky since we would need to call
     # isInstance over every item to ensure mypy that
     # the list consist of things of only one type
-    # that would be waste of time!
+    # that would such a waste of time!
     def sep_by1(self, *init):
         return [init[i] for i in range(0, len(init), 2)]
 
@@ -55,9 +69,74 @@ class ToAST(Transformer):
         return value
 
     # ------------------ Expressions ------------------
-    # def expression_operator()
+    def expression_record_update_item(
+        self, variable: Token, equal: Token, expression: ExpressionT
+    ) -> tuple[str, Range, ExpressionT]:
+        return (variable.value, token2Range(variable), expression)
 
-    def expression_parens(
+    def exppression_record_update_inner(
+        self, results: list[tuple[str, Range, ExpressionT]]
+    ) -> list[tuple[str, Range, ExpressionT]]:
+        return results
+
+    def expression_record_update(
+        self, items: list[tuple[str, Range, ExpressionT]]
+    ) -> RecordUpdate:
+        return RecordUpdate(items)
+
+    def expression_record_item_single(self, variable: Token) -> tuple[str, Range, None]:
+        return (variable.value, token2Range(variable), None)
+
+    def expression_record_item(
+        self, variable: Token, equal: Token, expression: ExpressionT
+    ) -> tuple[str, Range, ExpressionT]:
+        return (variable.value, token2Range(variable), expression)
+
+    def exppression_record_inner(
+        self, results: list[tuple[str, Range, Optional[ExpressionT]]]
+    ) -> list[tuple[str, Range, Optional[ExpressionT]]]:
+        return results
+
+    def expression_record(
+        self, items: list[tuple[str, Range, Optional[ExpressionT]]]
+    ) -> Record:
+        return Record(items)
+
+    def expression_operator(self, operator: Token) -> Operator:
+        match operator.type:
+            case "PREFIXED_OPERATOR":
+                return Operator.from_lark_token(operator)
+            case "OPERATOR":
+                return Operator.from_lark_token(operator)
+            case _:
+                raise ToASTException(missing_case_exception_message)
+
+    def expression_operator_identifier(self, operator: Token) -> Variable:
+        match operator.type:
+            case "INFIX_IDENTIFIER":
+                return Variable.from_lark_token(operator)
+            case _:
+                raise ToASTException(missing_case_exception_message)
+
+    def expression_constructor(self, identifier: Token) -> ConstructorName:
+        match identifier.type:
+            case "CAPITALIZED_IDENTIFIER":
+                return ConstructorName.from_lark_token(identifier)
+            case "PREFIXED_CAPITALIZED":
+                return ConstructorName.from_lark_token(identifier)
+            case _:
+                raise ToASTException(missing_case_exception_message)
+
+    def expression_variable(self, identifier: Token) -> Variable:
+        match identifier.type:
+            case "VARIABLE_IDENTIFIER":
+                return Variable.from_lark_token(identifier)
+            case "PREFIXED_VARIABLE":
+                return Variable.from_lark_token(identifier)
+            case _:
+                raise ToASTException(missing_case_exception_message)
+
+    def expression_annotation(
         self, expression: ExpressionT, colon=None, annotation: Optional[TypeT] = None
     ) -> ExpressionT:
         if annotation is None:
@@ -70,22 +149,17 @@ class ToAST(Transformer):
                 expression.free_variables,
             )
 
+    def type_arg(self, at, _type: TypeT) -> ExpressionTypeArgument:
+        return ExpressionTypeArgument(_type, _type._range)
+
     def expression_literal(self, tok: Token) -> Literal:
         return Literal(tok, token2Range(tok))
 
-    def expression_atom(self, atom: Union[Token, ExpressionT]) -> ExpressionT:
-        if isinstance(atom, Token):
-            if is_lowercase_token(atom):
-                return Variable(atom.value, False, token2Range(atom), set(atom.value))
-            elif is_capplitalized_identifier(atom):
-                return Variable(atom.value, True, token2Range(atom), set(atom.value))
-            elif atom.type == "OPERATOR":
-                return Variable(atom.value, False, token2Range(atom), set(atom.value))
-            else:
-                print(atom)
-                raise Exception("if you see this, someone updated the grammar")
-        else:
-            return atom
+    def expression_atom(self, atom: ExpressionT) -> ExpressionT:
+        return atom
+
+    # CONTINUE HERE __________________________________________________________________________
+    # def expression_selector(self, )
 
     def expression_application(self, *values: ExpressionT) -> ExpressionT:
         # rule uses "+" so, this is guaranteed
