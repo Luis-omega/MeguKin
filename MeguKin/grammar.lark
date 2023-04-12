@@ -91,6 +91,13 @@ sep_by1{p,sep}: p [(sep p)+]
 
 // --------------------- Expressions  ---------------------
 
+
+expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression | VARIABLE_IDENTIFIER
+
+expression_record_update_inner : sep_by1{expression_record_update_item,COME}
+
+expression_record_update :  braces{expression_record_update_inner}
+
 expression_record_item : VARIABLE_IDENTIFIER COLON expression
 
 expression_record_inner : sep_by1{expression_record_item,COME}
@@ -113,6 +120,7 @@ expression_atom: expression_variable
   | expression_constructor
   | expression_literal
   | expression_type_arg
+  | expression_record_update
   | expression_record
   | parens{expression_operator}
   | parens{expression_parens}
@@ -121,14 +129,7 @@ expression_selector: expression_atom ("." VARIABLE_IDENTIFIER)*
 
 expression_application: expression_selector+
 
-expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression
-
-expression_record_update_inner : sep_by1{expression_record_update_item,COME}
-
-expression_record_update : expression_application braces{expression_record_update_inner}
-  | expression_application
-
-expression_operators: (expression_record_update expression_operator)* expression_record_update
+expression_operators: (expression_application expression_operator)* expression_application
 
 expression_case_single : pattern_match RIGHT_ARROW expression
 
