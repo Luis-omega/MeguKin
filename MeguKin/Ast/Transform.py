@@ -11,6 +11,7 @@ from MeguKin.Ast.Types.Expression import (
     ConstructorName,
     RecordUpdate,
     Record,
+    Selector,
     ExpressionTypeArgument,
     Application,
     Function,
@@ -19,6 +20,9 @@ from MeguKin.Ast.Types.Expression import (
     ExpressionT,
     LetBinding,
     Let,
+    IntercalatedList,
+    IntercalatedListFist,
+    IntercalatedListSecond,
 )
 from MeguKin.Ast.Types.PatternMatch import (
     PatternMatchT,
@@ -158,8 +162,13 @@ class ToAST(Transformer):
     def expression_atom(self, atom: ExpressionT) -> ExpressionT:
         return atom
 
-    # CONTINUE HERE __________________________________________________________________________
-    # def expression_selector(self, )
+    def expression_selector(self, atom: ExpressionT, *remain: Token) -> ExpressionT:
+        if len(remain) == 0:
+            return atom
+        else:
+            _range = mergeRanges(atom._range, token2Range(remain[-1]))
+            fields = [i.value for i in remain[::2]]
+            return Selector(atom, fields, _range)
 
     def expression_application(self, *values: ExpressionT) -> ExpressionT:
         # rule uses "+" so, this is guaranteed
@@ -171,32 +180,34 @@ class ToAST(Transformer):
             )
         return out
 
-    # See note about the return type [str, Expression, str, Expression,...]
-    # in OperatorsWithoutMeaning
-    def expression_operators(
-        self, *allValues: Tuple[Union[Token, ExpressionT]]
-    ) -> ExpressionT:
+    def expression_operators(self, *allValues: ExpressionT | Operator) -> ExpressionT:
         match allValues:
             case [value]:
-                if isinstance(value, Token):
-                    raise Exception("if you see this, lark parsers has a bug")
-                else:
-                    return value  # type: ignore
+                return value
             # Grammar guaranty that we always have a value
             case _:
-                arg = list(allValues)
-                free_variables = set.union(
-                    *(
-                        set(i.value) if isinstance(i, Token) else i.free_variables  # type: ignore
-                        for i in arg
-                    )
+                firstValue = allValues[0]
+                acc1: IntercalatedList[ExpressionT, Operator] = IntercalatedListFist(
+                    firstValue
                 )
+                acc2: IntercalatedList[Operator, ExpressionT]
+                is_operator = True
+                for value in allValues[1:]:
+                    if is_operator:
+                        acc2 = IntercalatedListSecond(value, acc1)  # type: ignore
+                        is_operator = False
+                    else:
+                        acc1 = IntercalatedListSecond(value, acc2)
+                        is_operator = True
+
+                free_variables = set.union(*(i.free_variables for i in allValues))
                 return OperatorsWithoutMeaning(
-                    arg,  # type: ignore
-                    mergeRanges(allValues[0]._range, allValues[-1]._range),  # type: ignore
+                    acc1,
+                    mergeRanges(allValues[0]._range, allValues[-1]._range),
                     free_variables,
                 )
 
+    # CONTINUE HERE __________________________________________________________________________
     def expression_lambda_operators(self, expression: ExpressionT) -> ExpressionT:
         return expression
 

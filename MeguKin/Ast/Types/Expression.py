@@ -1,10 +1,13 @@
-from typing import Optional, Set, Union
+from typing import Optional, Set, Union, TypeVar, Generic
 
 from lark import Token
 
 from MeguKin.Reconstruction import Range, token2Range, mergeRanges
 from MeguKin.Ast.Types.Type import TypeT
 from MeguKin.Ast.Types.PatternMatch import PatternMatchT
+
+T = TypeVar("T")
+T2 = TypeVar("T2")
 
 ExpressionT = Union[
     "Literal",
@@ -13,6 +16,7 @@ ExpressionT = Union[
     "ConstructorName",
     "RecordUpdate",
     "Record",
+    "Selector",
     "ExpressionTypeArgument",
     "Application",
     "Function",
@@ -35,11 +39,8 @@ class Literal(Expression):
         self.value = value
         self._range = _range
 
-    def pretty(self):
-        return f"{self.value}"
-
     def __str__(self):
-        return f"Literal({self.value})"
+        return f"{self.value}"
 
     def __repr__(self):
         return f"Literal({self.value})"
@@ -168,6 +169,26 @@ class Record(Expression):
         return f"RecordUpdate({self._map})"
 
 
+class Selector(Expression):
+    expression: ExpressionT
+    fields: list[str]
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(
+        self, expression: ExpressionT, fields: list[str], _range: Range
+    ) -> None:
+        self.expression = expression
+        self.fields = fields
+        self.free_variables = expression.free_variables
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f"RecordUpdate({self._map})"
+
+
 class AnnotatedExpression(Expression):
     expression: ExpressionT
     annotation: Optional[TypeT]
@@ -231,7 +252,7 @@ class Application(Expression):
             return f"({self.function.pretty()}) ({self.argument.pretty()})"
 
     def __str__(self):
-        return repr(self)
+        return self.pretty()
 
     def __repr__(self):
         return f"Application({self.function},{self.argument})"
@@ -265,8 +286,39 @@ class Function(Expression):
         return f"Function({self.pattern},{self.value})"
 
 
+class IntercalatedList(Generic[T, T2]):
+    pass
+
+
+class IntercalatedListFist(IntercalatedList[T, T2]):
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return f"IntercalatedListFist({self.value})"
+
+
+class IntercalatedListSecond(IntercalatedList[T, T2]):
+    value: T
+    tail: IntercalatedList[T2, T]
+
+    def __init__(self, value: T, tail: IntercalatedList[T2, T]):
+        self.value = value
+        self.tail = tail
+
+    def __str__(self):
+        return f"({self.value},{self.tail})"
+
+    def __repr__(self):
+        return f"IntercalatedListSecond({self.value},{self.tail})"
+
+
 class OperatorsWithoutMeaning(Expression):
-    firstExpression: Expression
     # In fact we know that the list has this form:
     # [Expression, str,Expression,str,Expression,str,...]
     # But to encode that with types we would need to create the following
@@ -281,13 +333,13 @@ class OperatorsWithoutMeaning(Expression):
     # value = ConsItem 1 (ConsItem "hi" (InitialItem 0))    #
     #
     # And in fact we can translate that with a huge cost at runtime to us...
-    listOfOperatorExpression: List[Union[Token, ExpressionT]]
+    listOfOperatorExpression: IntercalatedList[ExpressionT, Operator]
     _range: Range
     free_variables: Set[str]
 
     def __init__(
         self,
-        listOfOperatorExpression: List[Union[Token, ExpressionT]],
+        listOfOperatorExpression: IntercalatedList[ExpressionT, Operator],
         _range: Range,
         free_variables: Set[str],
     ):
@@ -295,30 +347,21 @@ class OperatorsWithoutMeaning(Expression):
         self._range = _range
         self.free_variables = free_variables
 
-    def pretty(self):
+    def __str__(self):
         def prettify(exp: ExpressionT):
             if (
                 isinstance(exp, Function)
                 or isinstance(exp, OperatorsWithoutMeaning)
                 or isinstance(exp, Let)
             ):
-                return f"({exp.pretty()})"
+                return f"({exp})"
             else:
-                return exp.pretty()
+                return str(exp)
 
-        args = " ".join(
-            [
-                prettify(i) if isinstance(i, Expression) else i
-                for i in self.listOfOperatorExpression
-            ]
-        )
-        return f"{args}"
-
-    def __str__(self):
-        return f"OperatorWithoutMeaning({self.listOfOperatorExpression})"
+        return f"{self.listOfOperatorExpression}"
 
     def __repr__(self):
-        return f"OperatorWithoutMeaning({self.listOfOperatorExpression})"
+        return f"OperatorWithoutMeaning({repr(self.listOfOperatorExpression)})"
 
 
 class LetBinding(Expression):
@@ -350,14 +393,14 @@ class LetBinding(Expression):
 
 
 class Let(Expression):
-    bindings: List[LetBinding]
+    bindings: list[LetBinding]
     expression: ExpressionT
     _range: Range
     free_variables: Set[str]
 
     def __init__(
         self,
-        bindings: List[LetBinding],
+        bindings: list[LetBinding],
         expression: ExpressionT,
         _range: Range,
         free_variables: Set[str],
