@@ -186,7 +186,7 @@ class Selector(Expression):
         return repr(self)
 
     def __repr__(self):
-        return f"RecordUpdate({self._map})"
+        return f"RecordUpdate({self.expression},{self.fields})"
 
 
 class AnnotatedExpression(Expression):
@@ -256,34 +256,6 @@ class Application(Expression):
 
     def __repr__(self):
         return f"Application({self.function},{self.argument})"
-
-
-class Function(Expression):
-    pattern: PatternMatchT
-    value: ExpressionT
-    _range: Range
-    free_variables: Set[str]
-
-    def __init__(
-        self,
-        pattern: PatternMatchT,
-        value: ExpressionT,
-        _range: Range,
-        free_variables: Set[str],
-    ):
-        self.value = value
-        self.pattern = pattern
-        self._range = _range
-        self.free_variables = free_variables
-
-    def pretty(self):
-        return f"\\ {self.pattern.pretty()} -> ({self.value.pretty()})"
-
-    def __str__(self):
-        return f"Function({self.pattern},{self.value})"
-
-    def __repr__(self):
-        return f"Function({self.pattern},{self.value})"
 
 
 class IntercalatedList(Generic[T, T2]):
@@ -364,58 +336,120 @@ class OperatorsWithoutMeaning(Expression):
         return f"OperatorWithoutMeaning({repr(self.listOfOperatorExpression)})"
 
 
-class LetBinding(Expression):
-    name: str
+class CaseCase:
+    pattern: PatternMatchT
+    expression: ExpressionT
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(self, pattern: PatternMatchT, expression: ExpressionT):
+        self.pattern = pattern
+        self.expression = expression
+        self.range = mergeRanges(pattern._range, expression._range)
+        self.free_variables = expression.free_variables - pattern.bound_variables
+
+    def __str__(self):
+        return f"({str(self.pattern)} -> {str(self.expression)})"
+
+    def __repr__(self):
+        return f"CaseCase({repr(self.pattern)},{repr(self.expression)})"
+
+
+class Case(Expression):
+    expression: ExpressionT
+    cases: list[CaseCase]
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(self, expression: ExpressionT, cases: list[CaseCase], _range: Range):
+        self.expression = expression
+        self.cases = cases
+        self._range = _range
+        self.free_variables = set.union(*map(lambda x: x.free_variables, cases))
+
+    def __str__(self):
+        return f"case {str(self.expression)} of ({str(self.cases)})"
+
+    def __repr__(self):
+        return f"Case({repr(self.expression)},{repr(self.cases)})"
+
+
+class Function(Expression):
+    pattern: PatternMatchT
     expression: ExpressionT
     _range: Range
     free_variables: Set[str]
 
     def __init__(
         self,
-        name: str,
+        pattern: PatternMatchT,
         expression: ExpressionT,
         _range: Range,
-        free_variables: Set[str],
+    ):
+        self.pattern = pattern
+        self.expression = expression
+        self._range = _range
+        self.free_variables = expression.free_variables - pattern.bound_variables
+
+    def __str__(self):
+        return f"\\ {str(self.pattern)} -> ({str(self.value)})"
+
+    def __repr__(self):
+        return f"Function({repr(self.pattern)},{repr(self.value)})"
+
+
+class LetBinding(Expression):
+    name: Token
+    expression: ExpressionT
+    _range: Range
+    free_variables: set[str]
+    bound_variables: set[str]
+
+    def __init__(
+        self,
+        name: Token,
+        expression: ExpressionT,
     ):
         self.name = name
         self.expression = expression
-        self._range = _range
-        self.free_variables = free_variables
-
-    def pretty(self):
-        return f"{self.name} = {self.expression.pretty()}"
+        self._range = mergeRanges(token2Range(name), expression._range)
+        self.free_variables = expression.free_variables
+        self.bound_variables = set(name.value)
 
     def __str__(self):
-        return repr(self)
+        return f"{str(self.name)} = {str(self.expression)}"
 
     def __repr__(self):
-        return f"Let({self.name},{self.expression})"
+        return f"Let({repr(self.name)},{repr(self.expression)})"
 
 
 class Let(Expression):
     bindings: list[LetBinding]
     expression: ExpressionT
     _range: Range
-    free_variables: Set[str]
+    free_variables: set[str]
+    bound_variables: set[str]
 
     def __init__(
         self,
         bindings: list[LetBinding],
         expression: ExpressionT,
-        _range: Range,
-        free_variables: Set[str],
     ):
         self.bindings = bindings
         self.expression = expression
-        self._range = _range
-        self.free_variables = free_variables
-
-    def pretty(self):
-        bindings = "".join(f"({i.pretty()})" for i in self.bindings)
-        return f"let {bindings} in ({self.expression.pretty()})"
+        self._range = mergeRanges(bindings[0]._range, expression._range)
+        self.bound_variables = set(*map(lambda x: x.bound_variables, bindings))
+        self.free_variables = (
+            set.union(
+                set.union(*(i.free_variables for i in bindings)),
+                expression.free_variables,
+            )
+            - self.bound_variables
+        )
 
     def __str__(self):
-        return repr(self)
+        bindings = "".join(f"({str(i)})" for i in self.bindings)
+        return f"let {bindings} in ({str(self.expression)})"
 
     def __repr__(self):
         return f"Let({self.bindings},{self.expression})"

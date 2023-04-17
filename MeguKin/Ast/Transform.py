@@ -18,6 +18,8 @@ from MeguKin.Ast.Types.Expression import (
     OperatorsWithoutMeaning,
     AnnotatedExpression,
     ExpressionT,
+    CaseCase,
+    Case,
     LetBinding,
     Let,
     IntercalatedList,
@@ -207,34 +209,51 @@ class ToAST(Transformer):
                     free_variables,
                 )
 
-    # CONTINUE HERE __________________________________________________________________________
-    def expression_lambda_operators(self, expression: ExpressionT) -> ExpressionT:
+    def expression_case_single(
+        self, pattern: PatternMatchT, arrow: Token, expression: ExpressionT
+    ) -> tuple[PatternMatchT, ExpressionT]:
+        return (pattern, expression)
+
+    def expression_case_cases(self, *cases: CaseCase) -> list[CaseCase]:
+        return list(cases)
+
+    def expression_case_operators(self, expression: ExpressionT) -> ExpressionT:
+        return expression
+
+    def expression_case(
+        self,
+        case: Token,
+        expression: ExpressionT,
+        of: Token,
+        cases: list[CaseCase],
+    ) -> Case:
+        first_range = token2Range(case)
+        last_range = cases[-1]._range
+        _range = mergeRanges(first_range, last_range)
+        return Case(expression, cases, _range)
+
+    def expression_lambda_case(self, expression: ExpressionT) -> ExpressionT:
         return expression
 
     def expression_lambda(
-        self, lambda_symbol, pattern: PatternMatchT, arrow, expression: ExpressionT
+        self, _lambda: Token, pattern: PatternMatchT, arrow, expression: ExpressionT
     ) -> Function:
-        init_range = token2Range(lambda_symbol)
-        free_variables = expression.free_variables - pattern.bound_variables
+        init_range = token2Range(_lambda)
         return Function(
             pattern,
             expression,
             mergeRanges(init_range, expression._range),
-            free_variables,
         )
 
     def expression_let_binding(
         self, name: Token, eq, expression: ExpressionT
     ) -> LetBinding:
-        free_variables = expression.free_variables
         return LetBinding(
             name.value,
             expression,
-            mergeRanges(token2Range(name), expression._range),
-            free_variables,
         )
 
-    def expression_let_inside(self, *bindings: LetBinding) -> List[LetBinding]:
+    def expression_let_inside(self, *bindings: LetBinding) -> list[LetBinding]:
         return list(bindings)
 
     def expression_let_lambda(self, expression: ExpressionT) -> ExpressionT:
@@ -243,14 +262,22 @@ class ToAST(Transformer):
     def expression_let(
         self, let, bindings: List[LetBinding], _in, expression: ExpressionT
     ) -> Let:
-        _range = mergeRanges(bindings[0]._range, expression._range)
-        free_variables = set.union(*(i.free_variables for i in bindings))
-        return Let(bindings, expression, _range, free_variables)
+        return Let(bindings, expression)
 
     def expression(self, alternative: Union[Let, Function]) -> ExpressionT:
         return alternative
 
     # ------------------ PatternMatch ------------------
+    def pattern_match_constructor_identifier(self, token: Token) -> Token:
+        return token
+
+    def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
+        return PatternMatchVariable(token)
+
+    # CONTINUE HERE __________________________________________________________________________
+    # Nota: pattern_match_constructor_identifier es el unico que retorna un token
+    # los otros dos de pattern_match_atom son variable, literal u constructor entre parentesis.
+
     def pattern_match_constructor_args(
         self, *args: Union[Token, PatternMatchT]
     ) -> List[PatternMatchT]:
@@ -258,11 +285,7 @@ class ToAST(Transformer):
         for arg in args:
             if isinstance(arg, Token):
                 if is_lowercase_token(arg):
-                    out.append(
-                        PatternMatchVariable(
-                            arg.value, token2Range(arg), set(arg.value)
-                        )
-                    )
+                    out.append(PatternMatchVariable(arg))
                 else:
                     out.append(
                         PatternMatchConstructor(
