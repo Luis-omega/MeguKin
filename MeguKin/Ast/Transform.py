@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, TypeVar, Tuple
+from typing import Optional, TypeVar
 from functools import reduce
 
 from lark import Transformer, v_args, Token
@@ -30,9 +30,11 @@ from MeguKin.Ast.Types.PatternMatch import (
     PatternMatchT,
     PatternMatchVariable,
     PatternMatchConstructor,
+    PatternMatchLiteral,
+    PatternMatchConstructorName,
 )
-from MeguKin.Ast.Types.Top import Constructor, DataType, TopT, Definition, Declaration
-from MeguKin.Ast.Types.Type import TypeT, TypeName, TypeArrow
+from MeguKin.Ast.Types.Top import TopT, Definition, Declaration
+from MeguKin.Ast.Types.Type import TypeT, TypeVariable, TypeConcreteName, TypeArrow
 
 
 T = TypeVar("T")
@@ -260,82 +262,67 @@ class ToAST(Transformer):
         return expression
 
     def expression_let(
-        self, let, bindings: List[LetBinding], _in, expression: ExpressionT
+        self, let, bindings: list[LetBinding], _in, expression: ExpressionT
     ) -> Let:
         return Let(bindings, expression)
 
-    def expression(self, alternative: Union[Let, Function]) -> ExpressionT:
+    def expression(self, alternative: Let | Function) -> ExpressionT:
         return alternative
 
     # ------------------ PatternMatch ------------------
-    def pattern_match_constructor_identifier(self, token: Token) -> Token:
-        return token
+    def pattern_match_constructor_identifier(
+        self, token: Token
+    ) -> PatternMatchConstructorName:
+        return PatternMatchConstructorName.from_lark_token(token)
 
     def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
         return PatternMatchVariable(token)
 
-    # CONTINUE HERE __________________________________________________________________________
-    # Nota: pattern_match_constructor_identifier es el unico que retorna un token
-    # los otros dos de pattern_match_atom son variable, literal u constructor entre parentesis.
+    def pattern_match_literal(self, token: Token) -> PatternMatchLiteral:
+        return PatternMatchLiteral(token)
 
-    def pattern_match_constructor_args(
-        self, *args: Union[Token, PatternMatchT]
-    ) -> List[PatternMatchT]:
-        out: List[PatternMatchT] = []
-        for arg in args:
-            if isinstance(arg, Token):
-                if is_lowercase_token(arg):
-                    out.append(PatternMatchVariable(arg))
-                else:
-                    out.append(
-                        PatternMatchConstructor(
-                            arg.value, [], token2Range(arg), set(arg.value)
-                        )
-                    )
-            else:
-                out.append(arg)
+    def pattern_match_atom(self, value: PatternMatchT) -> PatternMatchT:
+        return value
+
+    def pattern_match_constructor_application(
+        self, maybe_constructor: PatternMatchT, *arguments: PatternMatchT
+    ) -> PatternMatchT:
+        arguments_list = list(arguments)
+        if len(arguments_list) == 0:
+            return maybe_constructor
+        else:
+            # We can ignore error here thanks to the
+            # grammar rule and the list len check
+            return PatternMatchConstructor(maybe_constructor, arguments)  # type: ignore
+
+    def pattern_match(self, pattern: PatternMatchT) -> PatternMatchT:
+        return pattern
+
+    def pattern_match_function_args_atoms(
+        self, *atoms: PatternMatchT
+    ) -> list[PatternMatchT]:
+        return list(atoms)
+
+    def pattern_match_function_args_comes(
+        self, *mixedList: PatternMatchT | Token
+    ) -> list[PatternMatchT]:
+        out: list[PatternMatchT] = []
+        for maybe_pattern in mixedList:
+            if not isinstance(maybe_pattern, Token):
+                out.append(maybe_pattern)
         return out
 
-    def pattern_match(
-        self,
-        firstArg: Union[Token, PatternMatchT],
-        secondArg: Optional[List[PatternMatchT]] = None,
-    ) -> PatternMatchT:
-        if isinstance(firstArg, Token):
-            if is_lowercase_token(firstArg):
-                out = PatternMatchVariable(
-                    firstArg.value, token2Range(firstArg), set(firstArg.value)
-                )
-                return out
-            else:
-                if secondArg is None:
-                    return PatternMatchConstructor(
-                        firstArg.value, [], token2Range(firstArg), set(firstArg.value)
-                    )
-                else:
-                    acc = token2Range(firstArg)
-                    # we can look for shadowed variables here but that would
-                    # add complexity to code instead of simplifiying.
-                    # like, we can't report the shadowing issue here,
-                    # the we need to propagate and that is a lot.
-                    # we can store the shadowing in the pattern, but
-                    # that's not it's place.
-                    bound_variables = set(firstArg.value)
-                    for i in secondArg:
-                        acc = mergeRanges(acc, i._range)
-                        bound_variables = bound_variables.union(i.bound_variables)
-                    return PatternMatchConstructor(
-                        firstArg.value, secondArg, acc, bound_variables
-                    )
-        else:
-            return firstArg
+    def pattern_match_function_args(
+        self, twoCases: list[PatternMatchT]
+    ) -> list[PatternMatchT]:
+        return twoCases
 
     # ------------------ Data ------------------
 
-    def data_type_constructor(
-        self, name: Token, types: Optional[List[TypeT]]
-    ) -> Constructor:
-        realTypes: List[TypeT]
+    # CONTINUE HERE __________________________________________________________________________
+
+    def data_type_constructor(self, name: Token, *types: TypeT) -> Constructor:
+        realTypes: list[TypeT]
         if types is None:
             realTypes = []
         else:
@@ -345,17 +332,17 @@ class ToAST(Transformer):
             acc = mergeRanges(acc, i._range)
         return Constructor(name.value, realTypes, acc)
 
-    def data_type_constructors(self, sep: List[Constructor]) -> List[Constructor]:
+    def data_type_constructors(self, sep: list[Constructor]) -> list[Constructor]:
         return sep
 
     # ------------------ Types ------------------
-    def type_atom(self, value: Union[Token, TypeT]) -> TypeT:
+    def type_atom(self, value: Token | TypeT) -> TypeT:
         if isinstance(value, Token):
             return TypeName(value.value, token2Range(value))
         else:
             return value
 
-    def type_expression(self, value: List[TypeT]) -> TypeT:
+    def type_expression(self, value: list[TypeT]) -> TypeT:
         value = value[::-1]
         firstValue = value[0]
         if len(value) == 1:
@@ -381,7 +368,7 @@ class ToAST(Transformer):
         )
 
     def top_data_type(
-        self, data: Token, typeName: Token, eq, constructors: List[Constructor]
+        self, data: Token, typeName: Token, eq, constructors: list[Constructor]
     ) -> DataType:
         # well, tecnically the last token is the one with the biggest range,
         # so, a mergeRanges between `data` and `constructors[-1]` must be enough.

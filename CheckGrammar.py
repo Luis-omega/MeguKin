@@ -1,5 +1,6 @@
 from lark import Lark
-from MeguKin.Ast.Transform import ToAST
+
+# from MeguKin.Ast.Transform import ToAST
 
 
 def load_grammar() -> Lark:

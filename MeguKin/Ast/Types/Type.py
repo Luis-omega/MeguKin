@@ -1,30 +1,69 @@
 from typing import Union
+from lark import Token
 
-from MeguKin.Reconstruction import Range
+from MeguKin.Reconstruction import Range, token2Range
 
-TypeT = Union["TypeArrow", "TypeApplication", "TypeName"]
+TypeT = Union["TypeArrow", "TypeApplication", "TypeVariable", "TypeConcreteName"]
 
 
 class Type:
     pass
 
 
-class TypeName(Type):
+class TypeVariable(Type):
+    prefix: list[str]
     name: str
     _range: Range
+    free_variables: set[str]
 
-    def __init__(self, name: str, _range: Range):
+    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
+        self.prefix = prefix
         self.name = name
         self._range = _range
+        self.free_variables = set(str(self))
 
-    def pretty(self):
-        return f"{self.name}"
+    @staticmethod
+    def from_lark_token(token: Token) -> "TypeVariable":
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return TypeVariable(prefix, name, _range)
 
     def __str__(self):
-        return f"TypeName({self.name})"
+        prefix = ".".join(self.prefix)
+        return f"{prefix}.{self.name}"
 
     def __repr__(self):
-        return f"TypeName({self.name})"
+        return f"TypeVariable({self.prefix},{self.name},{self._range},{self.free_variables})"
+
+
+class TypeConcreteName(Type):
+    prefix: list[str]
+    name: str
+    _range: Range
+    free_variables: set[str]
+
+    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
+        self.prefix = prefix
+        self.name = name
+        self._range = _range
+        self.free_variables = set(str(self))
+
+    @staticmethod
+    def from_lark_token(token: Token) -> "TypeConcreteName":
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return TypeConcreteName(prefix, name, _range)
+
+    def __str__(self):
+        prefix = ".".join(self.prefix)
+        return f"{prefix}.{self.name}"
+
+    def __repr__(self):
+        return f"TypeConcreteName({self.prefix},{self.name},{self._range},{self.free_variables})"
 
 
 class TypeApplication(Type):
