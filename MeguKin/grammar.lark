@@ -38,7 +38,7 @@ PIPE : "|"
 LET : "let"
 IN : "in"
 DOT : "."
-COME:","
+COMMA:","
 CASE:"case"
 OF:"of"
 FORALL:"forall"
@@ -108,14 +108,14 @@ sep_by1{p,sep}: p [(sep p)+]
 
 expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression
 
-expression_record_update_inner : sep_by1{expression_record_update_item,COME}
+expression_record_update_inner : sep_by1{expression_record_update_item,COMMA}
 
 expression_record_update :  braces{expression_record_update_inner}
 
 expression_record_item : VARIABLE_IDENTIFIER COLON expression
   | VARIABLE_IDENTIFIER -> expression_record_item_single
 
-expression_record_inner : sep_by1{expression_record_item,COME}
+expression_record_inner : sep_by1{expression_record_item,COMMA}
 
 expression_record : braces{expression_record_inner}
 
@@ -184,24 +184,24 @@ pattern_match : pattern_match_constructor_application
 
 
 pattern_match_function_args_atoms: pattern_match_atom+ 
-pattern_match_function_args_comes: (pattern_match COME )+ pattern_match
+pattern_match_function_args_comes: (pattern_match COMMA )+ pattern_match
 
 pattern_match_function_args: pattern_match_function_args_atoms | pattern_match_function_args_comes
 
 // --------------------- Data  ---------------------
 
-data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression_inner,COME}]
+data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression_inner,COMMA}]
 
 data_type_constructors: sep_by1{data_type_constructor, PIPE} 
 
-data_type_constructor_args : sep_by1{type_expression_inner,COME} | type_atom+
+data_type_constructor_args : sep_by1{type_expression_inner,COMMA} | type_atom+
 
 // --------------------- Types  ---------------------
 
 
 type_record_item : VARIABLE_IDENTIFIER COLON type_expression_inner
 
-type_record_inner : sep_by1{type_record_item,COME}
+type_record_inner : sep_by1{type_record_item,COMMA}
 
 type_record : braces{type_record_inner}
 
@@ -230,7 +230,7 @@ type_data_type_args : type_variable+
 // --------------------- Modules ---------------------
 import_constructor : CAPITALIZED_IDENTIFIER 
 
-import_constructors : sep_by1{import_constructor,COME}
+import_constructors : sep_by1{import_constructor,COMMA}
 
 import_type : CAPITALIZED_IDENTIFIER [parens{import_constructors}]
 
@@ -240,13 +240,13 @@ import_operator :[TYPE] OPERATOR
 
 module_import : import_type | import_function | import_operator
 
-module_imports : sep_by1{module_import,COME}
+module_imports : sep_by1{module_import,COMMA}
 
 export_module : PREFIXED_CAPITALIZED
 
 export_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
-export_constructors : sep_by1{export_constructor,COME}
+export_constructors : sep_by1{export_constructor,COMMA}
 
 export_type : (CAPITALIZED_IDENTIFIER| PREFIXED_CAPITALIZED) [parens{export_constructors}]
 
@@ -256,7 +256,7 @@ export_operator : [TYPE] (PREFIXED_OPERATOR | OPERATOR)
 
 module_export : export_type | export_function | export_operator
 
-module_exports : sep_by1{module_export,COME}
+module_exports : sep_by1{module_export,COMMA}
 
 // --------------------- Top  ---------------------
 
