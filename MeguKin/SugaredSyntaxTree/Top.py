@@ -1,7 +1,7 @@
 from typing import Union
 
 
-from MeguKin.SugaredSyntaxTree.Range import Range
+from MeguKin.File import Range
 from MeguKin.SugaredSyntaxTree.Expression import ExpressionT
 from MeguKin.SugaredSyntaxTree.Type import TypeT
 

@@ -1,7 +1,7 @@
 from typing import Union
 from lark import Token
 
-from MeguKin.SugaredSyntaxTree.Range import Range, token2Range, mergeRanges
+from MeguKin.File import Range, token2Range, mergeRanges
 
 PatternMatchT = Union[
     "PatternMatchVariable",

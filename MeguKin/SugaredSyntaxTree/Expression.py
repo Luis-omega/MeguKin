@@ -2,7 +2,7 @@ from typing import Optional, Set, Union, TypeVar, Generic
 
 from lark import Token
 
-from MeguKin.SugaredSyntaxTree.Range import Range, token2Range, mergeRanges
+from MeguKin.File import Range, token2Range, mergeRanges
 from MeguKin.SugaredSyntaxTree.Type import TypeT
 from MeguKin.SugaredSyntaxTree.PatternMatch import PatternMatchT
 

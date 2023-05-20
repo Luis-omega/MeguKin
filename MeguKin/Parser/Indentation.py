@@ -3,6 +3,9 @@ from enum import Enum, auto
 
 from lark import Token
 
+from MeguKin.File import FileInfo
+from MeguKin.Error import MeguKinError
+
 
 class Context(Enum):
     ROOT = auto()
@@ -29,13 +32,24 @@ class Item(NamedTuple):
 indentationErrorTokenName = "IndentationError"
 
 
-class Indenter:
+class IndenterError(MeguKinError):
+    pass
+
+
+class IndenterState:
     stack: list[Item]
     nex_token_set_indentation: bool
 
     def __init__(self) -> None:
         self.stack = [Item(Context.ROOT, 0, 0)]
         self.nex_token_set_indentation = False
+
+
+class Indenter:
+    state: IndenterState
+
+    def __init__(self) -> None:
+        self.state = IndenterState()
 
     def open_context(self, context: Context, token: Token):
         self.stack.append(Item(context, token.column, token.line))  # type: ignore
@@ -75,7 +89,8 @@ class Indenter:
             case Context.IN:
                 return Token.new_borrow_pos("IN_END", "", token)
             case Context.CASE:
-                #TODO: The close_context should drop the context? I guess yes, but still 
+                # TODO: The close_context should drop the context? I guess yes, but still
+                pass
 
     def close_until_indentation(self, token: Token) -> list[Token]:
         last_context = self.stack[-1]
@@ -114,3 +129,9 @@ class Indenter:
                             self.stack.append(token.column)
 
             # yield from self.handle_NL(token)
+
+
+def handle_indentation(
+    info: FileInfo, previousState: Optional[IndenterState], stream: Iterable[Token]
+) -> Iterable[IndenterError | Token]:
+    pass

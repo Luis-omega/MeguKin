@@ -1,7 +1,7 @@
 from typing import Union
 from lark import Token
 
-from MeguKin.SugaredSyntaxTree.Range import Range, token2Range
+from MeguKin.File import Range, token2Range
 
 TypeT = Union["TypeArrow", "TypeApplication", "TypeVariable", "TypeConcreteName"]
 

@@ -3,8 +3,8 @@ from functools import reduce
 
 from lark import Transformer, v_args, Token
 
-from MeguKin.SugaredSyntaxTree.Range import mergeRanges, token2Range, Range
-from MeguKin.Ast.Types.Expression import (
+from MeguKin.File import mergeRanges, token2Range, Range
+from MeguKin.SugaredSyntaxTree.Expression import (
     Literal,
     Variable,
     Operator,
@@ -26,15 +26,20 @@ from MeguKin.Ast.Types.Expression import (
     IntercalatedListFist,
     IntercalatedListSecond,
 )
-from MeguKin.Ast.Types.PatternMatch import (
+from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchT,
     PatternMatchVariable,
     PatternMatchConstructor,
     PatternMatchLiteral,
     PatternMatchConstructorName,
 )
-from MeguKin.Ast.Types.Top import TopT, Definition, Declaration
-from MeguKin.Ast.Types.Type import TypeT, TypeVariable, TypeConcreteName, TypeArrow
+from MeguKin.SugaredSyntaxTree.Top import TopT, Definition, Declaration
+from MeguKin.SugaredSyntaxTree.Type import (
+    TypeT,
+    TypeVariable,
+    TypeConcreteName,
+    TypeArrow,
+)
 
 
 T = TypeVar("T")
