@@ -7,7 +7,6 @@ hypothesis==6.70.1
 iniconfig==2.0.0
 jedi==0.17.2
 lark==1.1.5
-MeguKin @ file:///home/omega16/projects/MeguKin
 mypy==1.1.1
 mypy-extensions==1.0.0
 packaging==23.0

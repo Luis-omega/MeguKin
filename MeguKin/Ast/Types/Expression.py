@@ -375,27 +375,28 @@ class Case(Expression):
 
 
 class Function(Expression):
-    pattern: PatternMatchT
+    patterns: list[PatternMatchT]
     expression: ExpressionT
     _range: Range
     free_variables: Set[str]
 
     def __init__(
         self,
-        pattern: PatternMatchT,
+        patterns: list[PatternMatchT],
         expression: ExpressionT,
         _range: Range,
     ):
-        self.pattern = pattern
+        self.patterns = patterns
         self.expression = expression
         self._range = _range
-        self.free_variables = expression.free_variables - pattern.bound_variables
+        self.bound_variables = set.union(*(i.bound_variables for i in patterns))
+        self.free_variables = expression.free_variables - self.bound_variables
 
     def __str__(self):
-        return f"\\ {str(self.pattern)} -> ({str(self.value)})"
+        return f"\\ {str(self.patterns)} -> ({str(self.value)})"
 
     def __repr__(self):
-        return f"Function({repr(self.pattern)},{repr(self.value)})"
+        return f"Function({repr(self.patterns)},{repr(self.value)})"
 
 
 class LetBinding(Expression):

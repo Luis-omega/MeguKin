@@ -56,6 +56,16 @@ RIGHT:"right"
 NONE:"none"
 UNQUALIFIED:"unqualified"
 
+%declare EQUAL_END
+%declare IN_END
+%declare OF_CASE_END
+%declare OF_END
+%declare LAMBDA_END
+%declare VARIABLE_TOP_END
+%declare TYPE_TOP_END
+%declare DATA_END
+%declare TYPE_END
+
 // The arrows can be captured by the OPERATOR if we don't put a priority here.
 RIGHT_ARROW.2:"->"
 LEFT_ARROW.2:"<-"
@@ -150,19 +160,21 @@ expression_operators: (expression_application expression_operator)* expression_a
 
 expression_case_single : pattern_match RIGHT_ARROW expression
 
-expression_case_cases : parens{expression_case_single}+
+expression_case_cases : sep_by1{expression_case_single,OF_END}
 
-expression_case: CASE expression OF parens{expression_case_cases}
+expression_case: CASE expression OF expression_case_cases OF_END
   | expression_operators -> expression_case_operators
 
-expression_lambda : LAMBDA pattern_match RIGHT_ARROW parens{expression}
+expression_lambda_arguments: pattern_match+
+
+expression_lambda : LAMBDA expression_lambda_arguments RIGHT_ARROW expression LAMBDA_END
   | expression_case -> expression_lambda_case
 
-expression_let_binding: VARIABLE_IDENTIFIER EQUAL expression
+expression_let_binding: VARIABLE_IDENTIFIER EQUAL expression EQUAL_END
 
-expression_let_inside: parens{expression_let_binding}+
+expression_let_inside: expression_let_binding+
 
-expression_let: LET expression_let_inside IN parens{expression} 
+expression_let: LET expression_let_inside IN expression IN_END
   | expression_lambda -> expression_let_lambda
 
 expression: expression_let
@@ -186,6 +198,7 @@ pattern_match : pattern_match_constructor_application
 pattern_match_function_args_atoms: pattern_match_atom+ 
 pattern_match_function_args_comes: (pattern_match COMMA )+ pattern_match
 
+
 pattern_match_function_args: pattern_match_function_args_atoms | pattern_match_function_args_comes
 
 // --------------------- Data  ---------------------
@@ -193,8 +206,6 @@ pattern_match_function_args: pattern_match_function_args_atoms | pattern_match_f
 data_type_constructor : CAPITALIZED_IDENTIFIER [sep_by1{type_expression_inner,COMMA}]
 
 data_type_constructors: sep_by1{data_type_constructor, PIPE} 
-
-data_type_constructor_args : sep_by1{type_expression_inner,COMMA} | type_atom+
 
 // --------------------- Types  ---------------------
 
@@ -260,15 +271,15 @@ module_exports : sep_by1{module_export,COMMA}
 
 // --------------------- Top  ---------------------
 
-top_variable_declaration: VARIABLE_IDENTIFIER COLON parens{type_scheme}
+top_variable_declaration: VARIABLE_IDENTIFIER COLON type_scheme VARIABLE_TOP_END
 
-top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL parens{expression}
+top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL expression VARIABLE_TOP_END
 
-top_data_type.2: DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL parens{data_type_constructors}
+top_data_type.2: DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL data_type_constructors DATA_END
 
 top_type_synonym : TYPE CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL type_expression_inner
 
-top_type_new_type : NEWTYPE CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL parens{data_type_constructor}
+top_type_new_type : NEWTYPE CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL data_type_constructor TYPE_END
 
 top_operator_fixity : OPERATOR_KEYWORD OPERATOR (TYPE|TERM) INT (LEFT|RIGHT|NONE)
 

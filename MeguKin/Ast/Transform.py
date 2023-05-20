@@ -228,6 +228,7 @@ class ToAST(Transformer):
         expression: ExpressionT,
         of: Token,
         cases: list[CaseCase],
+        of_end: Token,
     ) -> Case:
         first_range = token2Range(case)
         last_range = cases[-1]._range
@@ -237,18 +238,25 @@ class ToAST(Transformer):
     def expression_lambda_case(self, expression: ExpressionT) -> ExpressionT:
         return expression
 
+    def expression_lambda_arguments(self, *patterns: PatternMatchT):
+        return list(patterns)
+
     def expression_lambda(
-        self, _lambda: Token, pattern: PatternMatchT, arrow, expression: ExpressionT
+        self,
+        _lambda: Token,
+        patterns: list[PatternMatchT],
+        arrow,
+        expression: ExpressionT,
     ) -> Function:
         init_range = token2Range(_lambda)
         return Function(
-            pattern,
+            patterns,
             expression,
             mergeRanges(init_range, expression._range),
         )
 
     def expression_let_binding(
-        self, name: Token, eq, expression: ExpressionT
+        self, name: Token, eq, expression: ExpressionT, separator: Token
     ) -> LetBinding:
         return LetBinding(
             name.value,
@@ -262,7 +270,12 @@ class ToAST(Transformer):
         return expression
 
     def expression_let(
-        self, let, bindings: list[LetBinding], _in, expression: ExpressionT
+        self,
+        let,
+        bindings: list[LetBinding],
+        _in: Token,
+        expression: ExpressionT,
+        _in_end: Token,
     ) -> Let:
         return Let(bindings, expression)
 
