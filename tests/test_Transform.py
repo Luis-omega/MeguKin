@@ -17,7 +17,7 @@ from MeguKin.SugaredSyntaxTree.Top import Top
 
 
 def load_grammar() -> Lark:
-    grammarPath = "MeguKin/grammar.lark"
+    grammarPath = "MeguKin/Parsers/grammar.lark"
     startSymbols = ["top"]
     with open(grammarPath, "r") as grammarFile:
         grammar = grammarFile.read()

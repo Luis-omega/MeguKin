@@ -4,7 +4,7 @@ from lark import Lark
 
 
 def load_grammar() -> Lark:
-    grammarPath = "MeguKin/grammar.lark"
+    grammarPath = "MeguKin/Parser/grammar.lark"
     startSymbols = ["top"]
     with open(grammarPath, "r") as grammarFile:
         grammar = grammarFile.read()
