@@ -12,8 +12,8 @@ from tests.ASTgenerators import *
 
 # gen_top_definition, gen_expression
 
-from MeguKin.Ast.Transform import ToAST
-from MeguKin.Ast.Types.Top import Top
+from MeguKin.SugaredSyntaxTree.Transform import ToAST
+from MeguKin.SugaredSyntaxTree.Top import Top
 
 
 def load_grammar() -> Lark:

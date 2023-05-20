@@ -2,8 +2,7 @@ from typing import List
 
 from hypothesis.strategies import composite, integers, from_regex, text, lists, integers
 
-# from Megukin.AST.Types import
-from MeguKin.Ast.Types.Expression import (
+from Megukin.SugaredSyntaxTree.Expression import (
     Literal,
     AnnotatedExpression,
     Variable,
@@ -14,11 +13,14 @@ from MeguKin.Ast.Types.Expression import (
     LetBinding,
 )
 
-from MeguKin.Ast.Types.PatternMatch import PatternMatchVariable, PatternMatchConstructor
-from MeguKin.Ast.Types.Type import TypeName, TypeArrow
-from MeguKin.Ast.Types.Top import Definition, Declaration, DataType, Constructor
+from Megukin.SugaredSyntaxTree.PatternMatch import (
+    PatternMatchVariable,
+    PatternMatchConstructor,
+)
+from Megukin.SugaredSyntaxTree.Type import TypeName, TypeArrow
+from Megukin.SugaredSyntaxTree.Top import Definition, Declaration, DataType, Constructor
 
-from MeguKin.Reconstruction import Range
+from Megukin.SugaredSyntaxTree.Range import Range
 
 emptyRange = Range(0, 0, 0, 0, 0, 0)
 
