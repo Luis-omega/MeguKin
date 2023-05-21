@@ -1,7 +1,7 @@
 from typing import Optional, TypeVar
 from functools import reduce
 
-from lark import Transformer, v_args, Token
+from lark import Transformer, v_args, Token, Tree
 
 from MeguKin.File import mergeRanges, token2Range, Range
 from MeguKin.SugaredSyntaxTree.Expression import (
@@ -398,3 +398,7 @@ class ToAST(Transformer):
 
     def top(self, value: TopT) -> TopT:
         return value
+
+
+def tree2sugared(trees: list[Tree]) -> list[TopT]:
+    pass

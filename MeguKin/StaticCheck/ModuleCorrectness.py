@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Tuple, Set, Any
 from collections import Counter
 
-from MeguKin.Ast.Types.Top import (
+from MeguKin.SugaredSyntaxTree.Top import (
     Top,
     TopT,
     Declaration,
@@ -10,12 +10,12 @@ from MeguKin.Ast.Types.Top import (
     Constructor,
     DataType,
 )
-from MeguKin.Ast.Types.PatternMatch import (
+from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchT,
     PatternMatchVariable,
     PatternMatchConstructor,
 )
-from MeguKin.Ast.Types.Expression import (
+from MeguKin.SugaredSyntaxTree.Expression import (
     ExpressionT,
     Expression,
     Int,
@@ -25,6 +25,12 @@ from MeguKin.Ast.Types.Expression import (
     OperatorsWithoutMeaning,
     Application,
 )
+
+from MeguKin.ModuleLoad.Module import LoadedModules
+
+
+class AST:
+    pass
 
 
 class ModuleCorrectnessError:
@@ -132,3 +138,7 @@ def find_pattern_match_binded_variables(pattern: PatternMatchT) -> Set[str]:
             return set([n])
         case PatternMatchConstructor(name=n, patterns=p):
             return set().union(*[find_pattern_match_binded_variables(i) for i in p])
+
+
+def semantic_analysis(desugared_trees: list[Top], modules: LoadedModules) -> list[AST]:
+    pass

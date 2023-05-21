@@ -6,23 +6,26 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'MeguKin'
-copyright = '2023, Luis Alberto Díaz Díaz'
-author = 'Luis Alberto Díaz Díaz'
-release = 'MIT'
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath("../.."))
+
+project = "MeguKin"
+copyright = "2023, Luis Alberto Díaz Díaz"
+author = "Luis Alberto Díaz Díaz"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary"]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]
