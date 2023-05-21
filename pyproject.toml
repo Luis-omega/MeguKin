@@ -2,6 +2,35 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "MeguKin"
+version = "0.0.1"
+dependencies = [
+  "lark",
+  "hypothesis",
+  "black"
+  ,"docstring-to-markdown"
+  ,"docutils"
+  ,"exceptiongroup"
+  ,"jedi"
+  ,"mypy"
+  ,"mypy-extensions"
+  ,"packaging"
+  ,"pyflakes"
+  ,"pylsp-mypy"
+  ,"pylsp-rope"
+  ,"pytest"
+  ,"python-jsonrpc-server"
+  ,"python-language-server"
+  ,"python-lsp-black"
+  ,"python-lsp-jsonrpc"
+  ,"python-lsp-server"
+  ,"pytoolconfig"
+  ,"rope"
+  ,"Sphinx"
+  ,"typing_extensions"
+]
+
 [metadata]
 name = "MeguKin"
 version = "0.0.1"
@@ -13,4 +42,10 @@ addopts = [
 pythonpath = [
   "."
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["MeguKin"]  # alternatively: `exclude = ["additional*"]`
+namespaces = false
+
 

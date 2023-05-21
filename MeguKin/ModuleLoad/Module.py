@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import NamedTuple, NewType
+
 from MeguKin.Error import MeguKinError
 
 
@@ -19,3 +22,8 @@ class ModuleImports:
 
 class LoadedModules:
     pass
+
+
+ModulePreviewInfo = NamedTuple("ModulePreviewInfo", [("name", str), ("path", Path)])
+
+ModulesPreviewInfo = NewType("ModulesPreviewInfo", dict[str, Path])

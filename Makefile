@@ -1,5 +1,5 @@
 
-.PHONY: requirements
+.PHONY: requirements run
 
 sourceEnv=source .env/bin/activate
 
@@ -17,6 +17,9 @@ install: $(pythonSrc)
 
 uninstall:
 	@${sourceEnv};pip uninstall ${src}
+
+run:
+	@${sourceEnv};PYTHONPATH=":" python app/main.py hi
 
 gen-stub:
 	@${sourceEnv};stubgen ${src}
