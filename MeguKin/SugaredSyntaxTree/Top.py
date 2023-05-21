@@ -9,8 +9,7 @@ TopT = Union["Definition", "Declaration", "DataType", "Import", "Export"]
 
 
 class Top:
-    def pretty(self):
-        raise "Not implemented"
+    pass
 
 
 class Definition(Top):
@@ -39,9 +38,6 @@ class Declaration(Top):
         self.name = name
         self._type = _type
         self._range = _range
-
-    def pretty(self):
-        return f"{self.name} : ({self._type.pretty()})"
 
     def __str__(self):
         return repr(self)

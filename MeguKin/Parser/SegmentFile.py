@@ -14,5 +14,5 @@ FileSegment = NamedTuple(
 )
 
 
-def segment_file(path: Path) -> Iterable[SegmentFileError | FileSegment]:
+def segment_file(file_lines: Iterable[str]) -> Iterable[FileSegment]:
     pass
