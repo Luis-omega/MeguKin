@@ -48,4 +48,3 @@ where = ["."]
 include = ["MeguKin"]  # alternatively: `exclude = ["additional*"]`
 namespaces = false
 
-

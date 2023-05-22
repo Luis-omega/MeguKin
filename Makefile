@@ -10,7 +10,7 @@ pythonFiles=$(find MeguKin/ tests/ -name "*.py")
 pythonSrc=$(find MeguKin/ -name "*.py")
 
 test:
-	@${sourceEnv};pytest
+	@${sourceEnv};export PYTHONPATH=":";pytest
 
 install: $(pythonSrc)
 	@${sourceEnv};pip install .
