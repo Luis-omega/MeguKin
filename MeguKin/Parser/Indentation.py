@@ -84,21 +84,22 @@ def gen_close_context(
                 )
             match previous_item.context:
                 case Context.ROOT:
-                    return Token.new_borrow_pos("VARIABLE_TOP_END", "", token)
+                    return Token.new_borrow_pos("EQUAL_TOP_END", "", token)
                 case Context.LET:
                     return Token.new_borrow_pos("EQUAL_END", "", token)
+                case Context.RECORD:
+                    return None
+                case _:
+                    return None
         case Context.LET:
             if token.type != "IN":
-                return Token.new_borrow_pos(
-                    indentationErrorTokenName,
-                    f"Let indentation error at Token({token.type},{token.value})",
+                return make_error_token(
                     token,
+                    "unexpected `in`, if you are trying to close a `let`, something is missing in the middle of them or maybe you forgot to use `let` to being with.",
                 )
             elif token.column != item.column:
-                return Token.new_borrow_pos(
-                    indentationErrorTokenName,
-                    "Indentation error, a `in` for a `let` should be at the same indentation level",
-                    token,
+                return make_error_token(
+                    token, "a `in` for a `let` should be at the same indentation level"
                 )
             else:
                 return None
@@ -107,6 +108,19 @@ def gen_close_context(
         case Context.CASE:
             # TODO: The close_context should drop the context? I guess yes, but still
             pass
+        case Context.RECORD:
+            match token.type:
+                case "RBRACE":
+                    if token.line == item.line or token.column == item.column:
+                        return None
+                    return make_error_token(
+                        token,
+                        "a closing `}` must be at the same level that it's corresponding `{`, maybe you miss one `}`? ",
+                    )
+                case _:
+                    return make_error_token(
+                        token, "expected `}` to close a `{` but wasn't found"
+                    )
 
 
 def gen_close_tokens_after(state: IndenterState, token: Token) -> list[Token]:
@@ -128,6 +142,18 @@ def gen_close_tokens_after(state: IndenterState, token: Token) -> list[Token]:
         state.stack.pop()
         last_context = state.stack[-1]
     return acc
+
+
+def set_expectation_at_next_token(state: IndenterState, context: Context, token: Token):
+    log.debug("setting expectation for indentation")
+    state.expects = NextTokenAtleastAt(
+        token,
+        token.column + 1,  # type: ignore
+        "expected indentation to be greater than the '=' for let",
+        lambda tok: Item(context, tok.column, tok.line),  # type: ignore
+    )
+    log.debug(state.expects)
+    log.debug(f"yield {token}")
 
 
 def handle_indentation(
@@ -193,7 +219,39 @@ def handle_indentation(
                         log.debug(state.expects)
                         log.debug(f"yield {token}")
                         yield token
+                    case Context.RECORD:
+                        log.debug("setting expectation for indentation")
+                        state.expects = NextTokenAtleastAt(
+                            token,
+                            token.column + 1,  # type: ignore
+                            "expected indentation to be greater than the '=' in the record",
+                            lambda tok: Item(Context.EQUAL, tok.column, tok.line),
+                        )
+                        log.debug(state.expects)
+                        log.debug(f"yield {token}")
+                        yield token
+            case "LET":
+                log.debug("setting expectation for indentation")
+                state.expects = NextTokenAtleastAt(
+                    token,
+                    token.column + 1,  # type: ignore
+                    "expected indentation to be greater than the '=' in the record",
+                    lambda tok: Item(Context.EQUAL, tok.column, tok.line),
+                )
+                log.debug(state.expects)
+                log.debug(f"yield {token}")
+                yield token
 
+            case "IN":
+                log.debug("trying to remove let context as we found a `in`")
+                maybe_new = gen_close_context(
+                    state.stack[-1], None, token  # We don't need more context for this.
+                )
+                if not maybe_new is None:
+                    # not None means that a
+                    log.debug("failed to remove let context")
+                    yield maybe_new
+                    return
             case _:
                 log.debug(f"nothing to do, yielding token {token}")
                 yield token

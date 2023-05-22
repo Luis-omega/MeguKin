@@ -41,7 +41,7 @@ class TestEqualAtRoot:
             "VARIABLE_IDENTIFIER",
             "EQUAL",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
         ]
         make_test(example, state, expected)
 
@@ -55,7 +55,7 @@ class TestEqualAtRoot:
             "VARIABLE_IDENTIFIER",
             "VARIABLE_IDENTIFIER",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
         ]
         make_test(example, state, expected)
 
@@ -67,7 +67,7 @@ class TestEqualAtRoot:
             "VARIABLE_IDENTIFIER",
             "EQUAL",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
         ]
         make_test(example, state, expected)
 
@@ -81,14 +81,12 @@ class TestEqualAtRoot:
             "VARIABLE_IDENTIFIER",
             "VARIABLE_IDENTIFIER",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
         ]
         make_test(example, state, expected)
 
     @staticmethod
     def test_equal_indentation_wont_close_context():
-        # This must be rejected at the parsing level
-        # lexer isn't in charge of it.
         example = "a = \n b \n c"
         state = IndenterState()
         expected = [
@@ -96,7 +94,7 @@ class TestEqualAtRoot:
             "EQUAL",
             "VARIABLE_IDENTIFIER",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
         ]
         make_test(example, state, expected)
 
@@ -108,7 +106,7 @@ class TestEqualAtRoot:
             "VARIABLE_IDENTIFIER",
             "EQUAL",
             "VARIABLE_IDENTIFIER",
-            "VARIABLE_TOP_END",
+            "EQUAL_TOP_END",
             "VARIABLE_IDENTIFIER",
         ]
         make_test(example, state, expected)
@@ -198,8 +196,6 @@ class TestEqualAtLet:
 
     @staticmethod
     def test_equal_indentation_wont_close_context():
-        # This must be rejected at the parsing level
-        # lexer isn't in charge of it.
         example = " a = \n    b \n    c"
         state = IndenterState()
         state.append(Item(Context.LET, 1, 0))
@@ -215,8 +211,6 @@ class TestEqualAtLet:
 
     @staticmethod
     def test_lower_indentation_close_context():
-        # This must be rejected at the parsing level
-        # lexer isn't in charge of it.
         example = " a = \n     b \n    c"
         state = IndenterState()
         state.append(Item(Context.LET, 1, 0))
@@ -239,96 +233,127 @@ class TestEqualAtLet:
         make_test(example, state, expected)
 
 
-# def test_expression_record_update():
-#    lexer = get_lexer()
-#    text_to_test = [
-#        """
-# a = { b = c, d=e,f=g}
-# """,
-#        """
-# a = { b
-#      = c,
-#      d=e,
-#      f=g
-#    }
-# """,
-#        """
-# a = { b
-#      =
-#      c,
-#      d =
-#        e,
-#      f =
-#        g
-#    }
-# """,
-#    ]
-#    lexed_text = [token.value for token in lexer(text_to_test)]
-#    assert expected_result == lexed_text
-#
-#
-# def test_expression_record():
-#    lexer = get_lexer()
-#    text_to_test = """
-# a = {
-# b: w,
-# c: z,
-#     d : y1 y2,
-#         e:x1
-#            x2
-#           x3,
-#      f : v
-# }"""
-#    expected_result = [
-#        "a",
-#        "=",
-#        "(",
-#        "{",
-#        "b",
-#        ":",
-#        "(",
-#        "w",
-#        ")",
-#        ",",
-#        "c",
-#        ":",
-#        "(",
-#        "z",
-#        ")",
-#        "d",
-#        ":",
-#        "(",
-#        "y1",
-#        "y2",
-#        ")",
-#        ",",
-#        "e",
-#        ":",
-#        "(",
-#        "x1",
-#        "x2",
-#        "x3" ")",
-#        ",",
-#        "f",
-#        ":",
-#        "(",
-#        "v",
-#        ")",
-#        "}",
-#        ")",
-#        # TODO: I don't know if this is the right final token
-#        "EOF",
-#    ]
-#    lexed_text = [token.value for token in lexer(text_to_test)]
-#    assert expected_result == lexed_text
-#
-#
-# def test_expression_annotation():
-#    lexer = get_lexer()
-#    text_to_test = """
-# a = (
-# b :
-#    C d e
-#        f
-#      g)"""
-#    expected_result = ["a", "=", "(", "(" "b", ":", "C", "d", "e", "f", "g", ")", ")"]
+class TestEqualAtRecord:
+    # keep a position in sync with the item in state in every example
+    # the IndentationError happens because "let" context wasn't close by "in"
+    @staticmethod
+    def test_same_line_single():
+        example = " a = b"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_same_line():
+        example = " a = b c d"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_next_line_single():
+        example = " a = \n    b"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_next_line_single_fail():
+        example = " a = \n b"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_next_line():
+        example = " a = \n    b c \n    d"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_equal_indentation_wont_close_context():
+        example = " a = \n    b \n    c"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_lower_indentation_close_context():
+        example = " a = \n     b \n    c"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = [
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "VARIABLE_IDENTIFIER",
+            "IndentationError",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_fail_incomplete():
+        example = " a = \n"
+        state = IndenterState()
+        state.append(Item(Context.RECORD, 1, 0))
+        expected = ["VARIABLE_IDENTIFIER", "EQUAL", "IndentationError"]
+        make_test(example, state, expected)
+
+
+class TestLet:
+    @staticmethod
+    def test_single_line():
+        example = "let a = b in c"
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END",
+        ]
+        make_test(example, state, expected)
