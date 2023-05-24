@@ -29,6 +29,7 @@ def make_test(example: str, state: IndenterState, expected: str):
     new_tokens = list(handle_indentation(info, state, regular_tokens))
     print(new_tokens)
     tokens_type = [token.type for token in new_tokens]
+    print(new_tokens[-1].column, new_tokens[-1].line)
     assert expected == tokens_type
 
 
@@ -126,7 +127,7 @@ class TestEqualAtLet:
     def test_same_line_single():
         example = " a = b"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -140,7 +141,7 @@ class TestEqualAtLet:
     def test_same_line():
         example = " a = b c d"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -156,7 +157,7 @@ class TestEqualAtLet:
     def test_next_line_single():
         example = " a = \n    b"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -170,7 +171,7 @@ class TestEqualAtLet:
     def test_next_line_single_fail():
         example = " a = \n b"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -182,7 +183,7 @@ class TestEqualAtLet:
     def test_next_line():
         example = " a = \n    b c \n    d"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -198,7 +199,7 @@ class TestEqualAtLet:
     def test_equal_indentation_wont_close_context():
         example = " a = \n    b \n    c"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -213,7 +214,7 @@ class TestEqualAtLet:
     def test_lower_indentation_close_context():
         example = " a = \n     b \n    c"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -228,7 +229,7 @@ class TestEqualAtLet:
     def test_fail_incomplete():
         example = " a = \n"
         state = IndenterState()
-        state.append(Item(Context.LET, 1, 0))
+        state.append(Item(Context.LET, 1, 0, Token("LET", "let")))
         expected = ["VARIABLE_IDENTIFIER", "EQUAL", "IndentationError"]
         make_test(example, state, expected)
 
@@ -240,7 +241,7 @@ class TestEqualAtRecord:
     def test_same_line_single():
         example = " a = b"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -253,7 +254,7 @@ class TestEqualAtRecord:
     def test_same_line():
         example = " a = b c d"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -268,7 +269,7 @@ class TestEqualAtRecord:
     def test_next_line_single():
         example = " a = \n    b"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -281,7 +282,7 @@ class TestEqualAtRecord:
     def test_next_line_single_fail():
         example = " a = \n b"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -293,7 +294,7 @@ class TestEqualAtRecord:
     def test_next_line():
         example = " a = \n    b c \n    d"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -308,7 +309,7 @@ class TestEqualAtRecord:
     def test_equal_indentation_wont_close_context():
         example = " a = \n    b \n    c"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -322,7 +323,7 @@ class TestEqualAtRecord:
     def test_lower_indentation_close_context():
         example = " a = \n     b \n    c"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = [
             "VARIABLE_IDENTIFIER",
             "EQUAL",
@@ -336,7 +337,7 @@ class TestEqualAtRecord:
     def test_fail_incomplete():
         example = " a = \n"
         state = IndenterState()
-        state.append(Item(Context.RECORD, 1, 0))
+        state.append(Item(Context.RECORD, 1, 0, Token("LBRACE", "}")))
         expected = ["VARIABLE_IDENTIFIER", "EQUAL", "IndentationError"]
         make_test(example, state, expected)
 
@@ -357,3 +358,161 @@ class TestLet:
             "IN_END",
         ]
         make_test(example, state, expected)
+
+    @staticmethod
+    def test_multiple_line():
+        example = """
+    let 
+     a = b
+      c = d
+       e = f
+    in 
+     z
+        """
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_multiple_line_in_at_same_line_as_last():
+        example = """
+    let
+       a = b
+    in z"""
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END"
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_multiple_line_in_at_same_indentation_as_last():
+        example = """
+    let
+       a = b
+    in 
+    z"""
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END"
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_fail_if_next_not_indented():
+        example = """
+    let 
+    a """
+        state = IndenterState()
+        expected = [
+            "LET",
+            "IndentationError"
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_fail_if_in_not_in_the_same_column():
+        example = """
+    let a = b
+     in z"""
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IndentationError"
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_fail_if_in_not_in_the_same_line_and_last_is():
+        example = """
+    let a = b
+     in 
+    z"""
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IndentationError"
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_nested_let():
+        example = """
+    let a = 
+           let
+            w = 
+               z
+           in
+           c
+    in
+        let 
+           h = m
+        in
+         r"""
+        state = IndenterState()
+        expected = [
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END",
+            "EQUAL_END",
+            "IN",
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER"
+            "EQUAL_END",
+            "IN",
+            "VARIABLE_IDENTIFIER",
+            "IN_END",
+            "IN_END"
+        ]
+        make_test(example, state, expected)
+
+
