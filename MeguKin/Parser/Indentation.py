@@ -105,29 +105,81 @@ The principal tokens that can begin a indentation are:
 """
 
 
-from typing import Optional, Iterable, NamedTuple, Callable, Generic,TypeVar, Iterator
+from typing import (
+    Optional,
+    Iterable,
+    NamedTuple,
+    Callable,
+    Generic,
+    TypeVar,
+    Iterator,
+    NewType,
+)
 from enum import Enum, auto
 import logging
 
-from lark import Token
 
+from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
 from MeguKin.Error import MeguKinError
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
+
+def repr_token(token: Token):
+    return f"{repr(token)} at line {token.line}, column {token.column}"
+
+
+class LayoutError(MeguKinError):
+    msg: str
+
+    def __repr__(self):
+        return self.msg
+
+
+class MissMatchIndentation(LayoutError):
+    pass
+
+
+class LayoutClosedByBadToken(MissMatchIndentation):
+    def __init__(self, start_token: Token, end_token: Token):
+        self.msg = f"Unexpected indentation for {repr_token(end_token)}, while handling the indentation introduced by {repr_token(start_token)}"
+
+
+class LetFirstValueBeforeLet(MissMatchIndentation):
+    def __init__(self, start_token: Token, end_token: Token):
+        self.msg = f"Unexpected indentation for {repr_token(end_token)}, we expected it to be lower than the indentation introduced by {repr_token(start_token)}"
+
+
+class LetInMaybeMisplaced(MissMatchIndentation):
+    def __init__(self, start_token: Token, end_token: Token):
+        self.msg = f"Unexpected indentation for {repr_token(end_token)}, we expected it to be lower than the indentation introduced by {repr_token(start_token)}"
+
+
+class UnexpectedEOF(LayoutError):
+    report_at_token: Token
+    msg: str
+
+    def __init__(self, token: Token, expected_token: str):
+        self.report_at_token = token
+        self.msg = f"Unexpected end of input, we expected a {expected_token} after a {repr_token(token)}"
+
+
 T = TypeVar("T")
 
+
 class Context(Enum):
-    """
-    """
+    """ """
+
     ROOT = auto()
     EQUAL = auto()
     LET = auto()
+    LET_IN_DO = auto()
     IN = auto()
     CASE = auto()
     OF = auto()
+    DO = auto()
     FORALL = auto()
     DOT = auto()
     DATA = auto()
@@ -137,68 +189,39 @@ class Context(Enum):
     PAREN = auto()
 
 
-class Item(NamedTuple):
-    context: Context
+class ContextItem(NamedTuple):
     column: int
     line: int
     originated_by: Token
+    context: Context
 
 
-indentationErrorTokenName = "IndentationError"
+ContextStack = NewType("ContextStack", list[ContextItem])
 
-
-def make_error_token(token: Token, msg: str):
-    return Token.new_borrow_pos("IndentationError", f"Indentation error, {msg}", token)
-
-
-class IndenterError(MeguKinError):
-    pass
-
-
-class NextTokenAtleastAt(NamedTuple):
-    token: Token
-    column: int
-    error_msg: str
-    gen_item: Callable[[Token], Item]
-
-
-class IndenterState:
-    stack: list[Item]
-    expects: Optional[NextTokenAtleastAt]
-
-    def __init__(self) -> None:
-        self.stack = [Item(Context.ROOT, 0, 0, Token("ROOT", "ROOT"))]
-        self.expects = None
-
-    def append(self, item: Item) -> None:
-        self.stack.append(item)
-
-    def __repr__(self):
-        return f"IndenterState({repr(self.stack)},{repr(self.expects)})"
 
 class Stream(Generic[T]):
-    stream : Iterator[T]
-    next_item : Optional[T]
+    stream: Iterator[T]
+    next_item: Optional[T]
 
-    def __init__(self,stream:Iterator[T]):
+    def __init__(self, stream: Iterator[T]):
         self.stream = stream
         self.next_item = None
 
-    def get_next(self)->Optional[T]:
+    def get_next(self) -> Optional[T]:
         if self.next_item is None:
-            try: 
+            try:
                 new_value = next(self.stream)
                 return new_value
             except StopIteration:
                 return None
         else:
-            new_value = self.next_item 
+            new_value = self.next_item
             self.next_item = None
             return new_value
 
-    def peek(self)->Optional[T]:
+    def peek(self) -> Optional[T]:
         if self.next_item is None:
-            try: 
+            try:
                 next_item = next(self.stream)
                 self.next_item = next_item
                 return next_item
@@ -207,151 +230,448 @@ class Stream(Generic[T]):
         else:
             return self.next_item
 
-StackItem = NamedTuple("StackItem",[("column",int),("line",int),("original_token",Token),("enforce_same_level",bool),("token_that_set_identation",Token)]) 
 
-def format_token(token:Token)->str:
-    return f"""{repr(token)}, at line {token.line}, column {token.column}"""
+def make_layout_end(token: Token, content: T) -> Token:
+    return token.new_borrow_pos("LAYOUT_END", content, token)
 
-def make_error_token_with(token:Token,msg:str)->Token:
-    return Token.new_borrow_pos("IndenterError",msg, token)
 
-def make_expected_more_indentation_error(indentation_originator:Token, bad_token:Token)->Token:
-    msg = f"expected more indentation at {format_token(bad_token)}, as we saw a{format_token(indentation_originator)}"
-    return make_error_token_with(bad_token,msg)
+def make_layout_start(token: Token, content: T) -> Token:
+    return token.new_borrow_pos("LAYOUT_START", content, token)
 
-def make_unexpected_end_of_input(token:Token,msg:Optional[str])->Token:
-    if msg is None:
-        full_msg = f"unexpected end of input at {format_token(token)}."
+
+def make_token_error(token: Token, error: LayoutError):
+    return token.new_borrow_pos("LAYOUT_ERROR", error, token)
+
+
+def make_context_with_next_token(
+    token: Token, context: Context, stream: Stream, stack: ContextStack
+) -> tuple[bool, list[Token]]:
+    next_token = stream.peek()
+    out = []
+    if next_token is None:
+        out.append(token)
+        out.append(make_token_error(token, UnexpectedEOF(token, "let")))
+        return (True, out)
     else:
-        full_msg = f"unexpected end of input at {format_token(token)}. {msg}"
-    return make_error_token_with(token,full_msg)
-
-def make_cant_find_close_token(token:Token)->Token:
-    msg = "can't find the right match for {format_token(token)}."
-    return make_error_token_with(token,msg)
-
-def make_stack_item(origin_token:Token, same_level:bool, token_fund: Token):
-    return StackItem(token_fund.column,token_fund.line,origin_token,same_level,token_fund)
-
-def gen_close_token(item:StackItem,token:Token)->Optional[Token]:
-    pass
-
-def we_can_close(item:StackItem,token:Token):
-    return item.column > token.column
-
-def unwind_stack(items:list[StackItem],token:Token)->Iterator[Token]:
-    indentation = token.column
-    last_item = items[-1]
-    while we_can_close(last_item,token):
-        gen_token = gen_close_token(last_item,token)
-        if gen_token is None:
-            items.pop()
+        if next_token.column > token.column:
+            out.append(make_layout_start(token, ""))
+            context_item = ContextItem(
+                next_token.column, next_token.line, token, context
+            )
+            stack.append(context_item)
+            return (False, out)
         else:
-            yield gen_token
-            items.pop()
+            out.append(
+                make_token_error(next_token, LetFirstValueBeforeLet(token, next_token))
+            )
+            return (True, out)
 
-        last_item = items[-1]
 
-def safe_pop(l:list[T])->Optional[T]:
-    if len(l)>1:
-        return l.pop()
-    else:
-        return None
+def can_close_by_only_indentation(context: ContextItem, token: Token) -> bool:
+    match context.context:
+        case Context.LET:
+            if token.type == "IN" and token.column == context.originated_by.column:
+                return True
+            else:
+                return False
+        case Context.IN:
+            return True
+        case Context.EQUAL:
+            return True
+
+
+def unwind_stack(stack: ContextStack, token: Token) -> Iterable[Token]:
+    log.debug(f"unwinding stack,token:{repr_token(token)}")
+    while len(stack) > 0:
+        last_context = stack[-1]
+        log.debug(f"unwinding step, last_context={last_context}")
+        if token.column < last_context.column:
+            log.debug("removing context")
+            stack.pop()
+            if can_close_by_only_indentation(last_context, token):
+                log.debug("we can close this context")
+                yield make_layout_end(token, last_context)
+            else:
+                log.debug("we can't close this context")
+                yield make_token_error(
+                    token, LayoutClosedByBadToken(last_context.originated_by, token)
+                )
+        else:
+            return
 
 
 def handle_indentation(
-    info: FileInfo, previousState: Optional[list[StackItem]], stream: Stream[Token]
+    info: FileInfo, previous_stack: Optional[ContextStack], stream: Stream[Token]
 ) -> Iterable[Token]:
-    if previousState is None :
-        state = [StackItem(0,0,None,None,None)]
+    roo_context = ContextItem(
+        0, 0, Token("SOF", "start_of_file", 0, 0, 0, 0, 0, 0), Context.ROOT
+    )
+    stack: ContextStack
+    if previous_stack is None:
+        stack = ContextStack([roo_context])
     else:
-        state = previousState
-    current_token = stream.get_next()
-    line_changed = True
-    previous_line = 0
-    while not current_token is None : 
-        line_changed =  previous_line < current_token.line
+        stack = previous_stack
 
-        if line_changed:
-            log.debug("Line changed, unwinding stack")
-            for close_token in unwind_stack(state, current_token):
-                if not close_token is None :
-                    yield close_token
-                    if close_token.type == "IndenterError":
-                        return
-
-
-        match current_token.type:
-            case "LET":
-                next_token = stream.peek()
-                if next_token is None:
-                    error_token = make_unexpected_end_of_input(current_token, "A definition should go after a `let`.")
-                    yield error_token 
+    last_line = 0
+    current_token: Optional[Token] = stream.get_next()
+    while current_token is not None:
+        log.debug(f"New loop\ntoken: {repr_token(current_token)}")
+        log.debug(f"context: {stack}")
+        if current_token.line > last_line:
+            tokens_to_serve = unwind_stack(stack, current_token)
+            for token in tokens_to_serve:
+                log.debug(f"insert unwind: {token}")
+                yield token
+                if token.type == "LayoutError":
                     return
-                if next_token.column > current_token.column: #type: ignore
-                    yield make_expected_more_indentation_error(current_token,next_token)
-                    return 
+            log.debug(f"context after unwind: {stack}")
 
-                new_item = make_stack_item(current_token,True,next_token)
-                state.append(new_item)
-                log.debug("added let item to state")
-                yield current_token
-            case "IN":
-                last_context = safe_pop(state)
-                if last_context is None:
-                    error_token = make_error_token_with(current_token,f"unmatched {format_token(current_token)}")
-                    yield error_token
-                    return 
-                match last_context.original_token.type :
-                    case "LET":
-                        if last_context.original_token.column == current_token.column:
+            match current_token.type:
+                case "LET":
+                    match stack:
+                        case [
+                            *others,
+                            ContextItem(column_do, line_do, token_do, Context.DO),
+                        ]:
+                            log.debug(f"insert: {repr_token(current_token)}")
                             yield current_token
-                            state.pop()
-                        elif last_context.original_token.line == current_token.line:
-                            # we know for sure that we have a problem 
-                            # but it's something the parser must work on.
+                            (has_error, tokens) = make_context_with_next_token(
+                                current_token, Context.LET, stream, stack
+                            )
+                            for token in tokens:
+                                log.debug(f"insert: {repr_token(token)}")
+                                yield token
+                            if has_error:
+                                return
+                        case _:
+                            log.debug(f"insert: {repr_token(current_token)}")
                             yield current_token
-                        else:
-                            msg = f"unexpected position of {format_token(current_token)}, maybe you were trying to close {format(last_context.original_token)}?"
-                            error_token = make_error_token_with(current_token, msg)
-                            yield error_token
-                            return
-                    case "EQUAL":
-                        if last_context.original_token.line == current_token.line:
-                            previous_context = safe_pop(state)
-                            if previous_context is None:
-                                error_token = make_error_token_with(current_token,f"unmatched {format_token(current_token)}")
-                                yield error_token
-                                return 
-                            match previous_context.original_token.type:
-                                case "LET":
-                                    if last_context.original_token.column == current_token.column:
-                                        yield current_token
-                                        state.pop()
-                                    elif last_context.original_token.line == current_token.line:
-                                        # we know for sure that we have a problem 
-                                        # but it's something the parser must work on.
-                                        yield current_token
-                                    else:
-                                        msg = f"unexpected position of {format_token(current_token)}, maybe you were trying to close {format(last_context.original_token)}?"
-                                        error_token = make_error_token_with(current_token, msg)
-                                        yield error_token
-                                        return
-                
-                
+                            (has_error, tokens) = make_context_with_next_token(
+                                current_token, Context.LET, stream, stack
+                            )
+                            for token in tokens:
+                                log.debug(f"insert: {repr_token(token)}")
+                                yield token
+                            if has_error:
+                                return
 
+                case "IN":
+                    match stack:
+                        # We expect the `in` to be at the same line otherwise the unwind
+                        # removed the `=` and the `let`
+                        case [
+                            *others,
+                            ContextItem(column_let, line_let, token_let, Context.LET),
+                            ContextItem(column_eq, line_eq, token_eq, Context.EQUAL),
+                        ]:
+                            if current_token.line == token_let.line:
+                                stack.pop()
+                                stack.pop()
+                                log.debug("insert: layout_end")
+                                yield make_layout_end(current_token, "")
+                                log.debug("insert: layout_end")
+                                yield make_layout_end(current_token, "")
+                                log.debug(f"insert: {repr_token(current_token)}")
+                                yield current_token
+                                (has_error, tokens) = make_context_with_next_token(
+                                    current_token, Context.IN, stream, stack
+                                )
+                                for token in tokens:
+                                    log.debug(f"insert: {repr_token(token)}")
+                                    yield token
+                                if has_error:
+                                    return
+                            else:
+                                token = make_token_error(
+                                    current_token,
+                                    LetInMaybeMisplaced(token_let, current_token),
+                                )
+                                log.debug(f"insert: {repr_token(token)}")
+                                yield token
+                        # Nested let in the let introduction like `let a = let b ...`
+                        case [
+                            *others,
+                            ContextItem(column_in, line_in, token_in, Context.IN),
+                        ]:
+                            # FIXME: ADD code to handle in closed by in
+                            pass
+
+                        case _:
+                            log.debug(f"insert: {repr_token(current_token)}")
+                            yield current_token
+                            (has_error, tokens) = make_context_with_next_token(
+                                current_token, Context.IN, stream, stack
+                            )
+                            for token in tokens:
+                                log.debug(f"insert: {repr_token(token)}")
+                                yield token
+                            if has_error:
+                                return
+
+                case "EQUAL":
+                    match stack:
+                        case [
+                            *others,
+                            ContextItem(column_let, line_let, token_let, Context.LET),
+                        ]:
+                            log.debug(f"insert: {repr_token(current_token)}")
+                            yield current_token
+                            (has_error, tokens) = make_context_with_next_token(
+                                current_token, Context.EQUAL, stream, stack
+                            )
+                            for token in tokens:
+                                log.debug(f"insert: {repr_token(token)}")
+                                yield token
+                            if has_error:
+                                return
+
+                        case _:
+                            pass
+                case _:
+                    log.debug(f"insert default case: {repr_token(current_token)}")
+                    yield current_token
 
         current_token = stream.get_next()
-        previous_line = current_token.line
 
-    
+
+# T = TypeVar("T")
+#
+# class Context(Enum):
+#    """
+#    """
+#    ROOT = auto()
+#    EQUAL = auto()
+#    LET = auto()
+#    IN = auto()
+#    CASE = auto()
+#    OF = auto()
+#    FORALL = auto()
+#    DOT = auto()
+#    DATA = auto()
+#    LAMBDA = auto()
+#    LAMBDA_ARROW = auto()
+#    RECORD = auto()
+#    PAREN = auto()
+#
+#
+# class Item(NamedTuple):
+#    context: Context
+#    column: int
+#    line: int
+#    originated_by: Token
+#
+#
+# indentationErrorTokenName = "IndentationError"
+#
+#
+# def make_error_token(token: Token, msg: str):
+#    return Token.new_borrow_pos("IndentationError", f"Indentation error, {msg}", token)
+#
+#
+# class IndenterError(MeguKinError):
+#    pass
+#
+#
+# class NextTokenAtleastAt(NamedTuple):
+#    token: Token
+#    column: int
+#    error_msg: str
+#    gen_item: Callable[[Token], Item]
+#
+#
+# class IndenterState:
+#    stack: list[Item]
+#    expects: Optional[NextTokenAtleastAt]
+#
+#    def __init__(self) -> None:
+#        self.stack = [Item(Context.ROOT, 0, 0, Token("ROOT", "ROOT"))]
+#        self.expects = None
+#
+#    def append(self, item: Item) -> None:
+#        self.stack.append(item)
+#
+#    def __repr__(self):
+#        return f"IndenterState({repr(self.stack)},{repr(self.expects)})"
+#
+# class Stream(Generic[T]):
+#    stream : Iterator[T]
+#    next_item : Optional[T]
+#
+#    def __init__(self,stream:Iterator[T]):
+#        self.stream = stream
+#        self.next_item = None
+#
+#    def get_next(self)->Optional[T]:
+#        if self.next_item is None:
+#            try:
+#                new_value = next(self.stream)
+#                return new_value
+#            except StopIteration:
+#                return None
+#        else:
+#            new_value = self.next_item
+#            self.next_item = None
+#            return new_value
+#
+#    def peek(self)->Optional[T]:
+#        if self.next_item is None:
+#            try:
+#                next_item = next(self.stream)
+#                self.next_item = next_item
+#                return next_item
+#            except StopIteration:
+#                return None
+#        else:
+#            return self.next_item
+#
+# StackItem = NamedTuple("StackItem",[("column",int),("line",int),("original_token",Token),("enforce_same_level",bool),("token_that_set_identation",Token)])
+#
+# def format_token(token:Token)->str:
+#    return f"""{repr(token)}, at line {token.line}, column {token.column}"""
+#
+# def make_error_token_with(token:Token,msg:str)->Token:
+#    return Token.new_borrow_pos("IndenterError",msg, token)
+#
+# def make_expected_more_indentation_error(indentation_originator:Token, bad_token:Token)->Token:
+#    msg = f"expected more indentation at {format_token(bad_token)}, as we saw a{format_token(indentation_originator)}"
+#    return make_error_token_with(bad_token,msg)
+#
+# def make_unexpected_end_of_input(token:Token,msg:Optional[str])->Token:
+#    if msg is None:
+#        full_msg = f"unexpected end of input at {format_token(token)}."
+#    else:
+#        full_msg = f"unexpected end of input at {format_token(token)}. {msg}"
+#    return make_error_token_with(token,full_msg)
+#
+# def make_cant_find_close_token(token:Token)->Token:
+#    msg = "can't find the right match for {format_token(token)}."
+#    return make_error_token_with(token,msg)
+#
+# def make_stack_item(origin_token:Token, same_level:bool, token_fund: Token):
+#    return StackItem(token_fund.column,token_fund.line,origin_token,same_level,token_fund)
+#
+# def gen_close_token(item:StackItem,token:Token)->Optional[Token]:
+#    pass
+#
+# def we_can_close(item:StackItem,token:Token):
+#    return item.column > token.column
+#
+# def unwind_stack(items:list[StackItem],token:Token)->Iterator[Token]:
+#    indentation = token.column
+#    last_item = items[-1]
+#    while we_can_close(last_item,token):
+#        gen_token = gen_close_token(last_item,token)
+#        if gen_token is None:
+#            items.pop()
+#        else:
+#            yield gen_token
+#            items.pop()
+#
+#        last_item = items[-1]
+#
+# def safe_pop(l:list[T])->Optional[T]:
+#    if len(l)>1:
+#        return l.pop()
+#    else:
+#        return None
+#
+#
+# def handle_indentation(
+#    info: FileInfo, previousState: Optional[list[StackItem]], stream: Stream[Token]
+# ) -> Iterable[Token]:
+#    if previousState is None :
+#        state = [StackItem(0,0,None,None,None)]
+#    else:
+#        state = previousState
+#    current_token = stream.get_next()
+#    line_changed = True
+#    previous_line = 0
+#    while not current_token is None :
+#        line_changed =  previous_line < current_token.line
+#
+#        if line_changed:
+#            log.debug("Line changed, unwinding stack")
+#            for close_token in unwind_stack(state, current_token):
+#                if not close_token is None :
+#                    yield close_token
+#                    if close_token.type == "IndenterError":
+#                        return
+#
+#
+#        match current_token.type:
+#            case "LET":
+#                next_token = stream.peek()
+#                if next_token is None:
+#                    error_token = make_unexpected_end_of_input(current_token, "A definition should go after a `let`.")
+#                    yield error_token
+#                    return
+#                if next_token.column > current_token.column: #type: ignore
+#                    yield make_expected_more_indentation_error(current_token,next_token)
+#                    return
+#
+#                new_item = make_stack_item(current_token,True,next_token)
+#                state.append(new_item)
+#                log.debug("added let item to state")
+#                yield current_token
+#            case "IN":
+#                last_context = safe_pop(state)
+#                if last_context is None:
+#                    error_token = make_error_token_with(current_token,f"unmatched {format_token(current_token)}")
+#                    yield error_token
+#                    return
+#                match last_context.original_token.type :
+#                    case "LET":
+#                        if last_context.original_token.column == current_token.column:
+#                            yield current_token
+#                            state.pop()
+#                        elif last_context.original_token.line == current_token.line:
+#                            # we know for sure that we have a problem
+#                            # but it's something the parser must work on.
+#                            yield current_token
+#                        else:
+#                            msg = f"unexpected position of {format_token(current_token)}, maybe you were trying to close {format(last_context.original_token)}?"
+#                            error_token = make_error_token_with(current_token, msg)
+#                            yield error_token
+#                            return
+#                    case "EQUAL":
+#                        # At this point all context have less or equal indentation than this
+#                        # `IN` token, the only case we need to handle is that `=` and `IN`
+#                        # are in the same line
+#                        if last_context.original_token.line != current_token.line:
+#                            error_token = make_error_token_with(current_token,"")
+#                            previous_context = safe_pop(state)
+#                            if previous_context is None:
+#                                error_token = make_error_token_with(current_token,f"unmatched {format_token(current_token)}")
+#                                yield error_token
+#                                return
+#                            match previous_context.original_token.type:
+#                                case "LET":
+#                                    if last_context.original_token.column == current_token.column:
+#                                        yield current_token
+#                                        state.pop()
+#                                    elif last_context.original_token.line == current_token.line:
+#                                        # we know for sure that we have a problem
+#                                        # but it's something the parser must work on.
+#                                        yield current_token
+#                                    else:
+#                                        msg = f"unexpected position of {format_token(current_token)}, maybe you were trying to close {format(last_context.original_token)}?"
+#                                        error_token = make_error_token_with(current_token, msg)
+#                                        yield error_token
+#                                        return
+#
+#
+#
+#
+#        current_token = stream.get_next()
+#        previous_line = current_token.line
+
 
 # keep track of when we began a new line and use it to enforce same level of indentation for let
 
 
-#def gen_close_context(
+# def gen_close_context(
 #    item: Item, previous_item: Optional[Item], token: Token
-#) -> Optional[Token]:
+# ) -> Optional[Token]:
 #    match item.context:
 #        case Context.ROOT:
 #            return Token.new_borrow_pos(
@@ -413,7 +733,7 @@ def handle_indentation(
 #                    )
 #
 #
-#def gen_close_tokens_after(state: IndenterState, token: Token) -> list[Token]:
+# def gen_close_tokens_after(state: IndenterState, token: Token) -> list[Token]:
 #    log.debug(f"gen_close_tokens_after state: {state}")
 #    log.debug(f"token: {repr(token)} {token.column}")
 #    last_context = state.stack[-1]
@@ -434,13 +754,13 @@ def handle_indentation(
 #    return acc
 #
 #
-#def set_expectation_at_next_token(
+# def set_expectation_at_next_token(
 #    state: IndenterState,
 #    context: Context,
 #    token: Token,
 #    error_msg: str,
 #    use_level: Optional[int],
-#):
+# ):
 #    log.debug("setting expectation for indentation")
 #    if use_level is None:
 #        level = token.column + 1  # type: ignore
@@ -455,9 +775,9 @@ def handle_indentation(
 #    log.debug(state.expects)
 #
 #
-#def handle_indentation(
+# def handle_indentation(
 #    info: FileInfo, previousState: Optional[IndenterState], stream: Iterable[Token]
-#) -> Iterable[IndenterError | Token]:
+# ) -> Iterable[IndenterError | Token]:
 #    log.debug(f"begin_with {info} {previousState}")
 #    if previousState is None:
 #        state = IndenterState()
@@ -483,7 +803,7 @@ def handle_indentation(
 #                new_context = state.expects.gen_item(token)
 #                state.append(new_context)
 #                state.expects = None
-#        
+#
 #        found_fail_while_closing = False
 #        for close_token in gen_close_tokens_after(state, token):
 #            log.debug(f"emitting closing token {repr(close_token)}")
@@ -495,7 +815,7 @@ def handle_indentation(
 #        if found_fail_while_closing :
 #            log.debug("returning due to a fail while closing indentation")
 #            return
-#        
+#
 #
 #        last_context = state.stack[-1].context
 #        match token.type:
@@ -545,7 +865,7 @@ def handle_indentation(
 #
 #            case "IN":
 #                # TODO: If we have nested lets, we end here but with the inner one already closed
-#                # add a way to avoid doing this as we are closing a second context with 
+#                # add a way to avoid doing this as we are closing a second context with
 #                # the same token.
 #                # Two cases,
 #                # in same line:

@@ -56,9 +56,11 @@ RIGHT:"right"
 NONE:"none"
 UNQUALIFIED:"unqualified"
 
-%declare EQUAL_END
-%declare IN_END
-%declare OF_CASE_END
+
+%declare LAYOUT_START
+%declare LAYOUT_SEPARATOR
+%declare LAYOUT_END
+
 %declare OF_END
 %declare LAMBDA_END
 %declare EQUAL_TOP_END
@@ -116,16 +118,16 @@ sep_by1{p,sep}: p [(sep p)+]
 // --------------------- Expressions  ---------------------
 
 
-expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression
+expression_record_update_item : VARIABLE_IDENTIFIER EQUAL LAYOUT_START expression LAYOUT_END
 
-expression_record_update_inner : sep_by1{expression_record_update_item,COMMA}
+expression_record_update_inner : LAYOUT_START sep_by1{expression_record_update_item,COMMA} LAYOUT_END
 
 expression_record_update :  braces{expression_record_update_inner}
 
-expression_record_item : VARIABLE_IDENTIFIER COLON expression
+expression_record_item : VARIABLE_IDENTIFIER COLON LAYOUT_START expression LAYOUT_END
   | VARIABLE_IDENTIFIER -> expression_record_item_single
 
-expression_record_inner : sep_by1{expression_record_item,COMMA}
+expression_record_inner : LAYOUT_START sep_by1{expression_record_item,COMMA} LAYOUT_END
 
 expression_record : braces{expression_record_inner}
 
@@ -170,11 +172,11 @@ expression_lambda_arguments: pattern_match+
 expression_lambda : LAMBDA expression_lambda_arguments RIGHT_ARROW expression LAMBDA_END
   | expression_case -> expression_lambda_case
 
-expression_let_binding: VARIABLE_IDENTIFIER EQUAL expression EQUAL_END
+expression_let_binding: pattern_match EQUAL LAYOUT_START expression LAYOUT_END
 
 expression_let_inside: expression_let_binding+
 
-expression_let: LET expression_let_inside IN expression IN_END
+expression_let: LET LAYOUT_START expression_let_inside LAYOUT_END IN LAYOUT_START expression LAYOUT_END
   | expression_lambda -> expression_let_lambda
 
 expression: expression_let
