@@ -3,9 +3,7 @@ from lark import Token
 
 from MeguKin.File import Range, token2Range
 
-TypeT = Union[
-    "TypeArrow", "TypeApplication", "TypeVariable", "TypeConcreteName"
-]
+TypeT = Union["TypeArrow", "TypeApplication", "TypeVariable", "TypeConcreteName"]
 
 
 class Type:

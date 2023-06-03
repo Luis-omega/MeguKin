@@ -19,7 +19,6 @@ from typing import (
     Optional,
     Iterable,
     NamedTuple,
-    Callable,
     Generic,
     TypeVar,
     Iterator,
@@ -54,17 +53,29 @@ class MissMatchIndentation(LayoutError):
 
 class LayoutClosedByBadToken(MissMatchIndentation):
     def __init__(self, start_token: Token, end_token: Token):
-        self.msg = f"Unexpected indentation for {repr_token(end_token)}, while handling the indentation introduced by {repr_token(start_token)}"
+        self.msg = (
+            "Unexpected indentation for "
+            f"{repr_token(end_token)}, while handling the "
+            f"indentation introduced by {repr_token(start_token)}"
+        )
 
 
 class LetFirstValueBeforeLet(MissMatchIndentation):
     def __init__(self, start_token: Token, end_token: Token):
-        self.msg = f"Unexpected indentation for {repr_token(end_token)}, we expected it to be lower than the indentation introduced by {repr_token(start_token)}"
+        self.msg = (
+            "Unexpected indentation for "
+            f"{repr_token(end_token)}, we expected it to be lower than the "
+            f"indentation introduced by {repr_token(start_token)}"
+        )
 
 
 class LetInMaybeMisplaced(MissMatchIndentation):
     def __init__(self, start_token: Token, end_token: Token):
-        self.msg = f"Unexpected indentation for {repr_token(end_token)}, we expected it to be lower than the indentation introduced by {repr_token(start_token)}"
+        self.msg = (
+            "Unexpected indentation for"
+            f"{repr_token(end_token)}, we expected it to be lower than the "
+            f"indentation introduced by {repr_token(start_token)}"
+        )
 
 
 class UnexpectedEOF(LayoutError):
@@ -73,7 +84,10 @@ class UnexpectedEOF(LayoutError):
 
     def __init__(self, token: Token, expected_token: str):
         self.report_at_token = token
-        self.msg = f"Unexpected end of input, we expected a {expected_token} after a {repr_token(token)}"
+        self.msg = (
+            "Unexpected end of input, we expected a "
+            f"{expected_token} after a {repr_token(token)}"
+        )
 
 
 T = TypeVar("T")
@@ -173,9 +187,7 @@ def make_context_with_next_token(
                 return (False, [])
         else:
             out.append(
-                make_token_error(
-                    next_token, LetFirstValueBeforeLet(token, next_token)
-                )
+                make_token_error(next_token, LetFirstValueBeforeLet(token, next_token))
             )
             return (True, out)
 
@@ -184,15 +196,10 @@ def make_separator(context: ContextItem, token: Token) -> Token:
     return Token.new_borrow_pos("LAYOUT_SEPARATOR", "\\;", token)
 
 
-def gen_separator_if_same_level(
-    token: Token, stack: ContextStack
-) -> Optional[Token]:
+def gen_separator_if_same_level(token: Token, stack: ContextStack) -> Optional[Token]:
     match stack:
-        case [*others, last_context]:
-            if (
-                last_context.column == token.column
-                and last_context.line == token.line
-            ):
+        case [*_, last_context]:
+            if last_context.column == token.column and last_context.line == token.line:
                 return None
             elif last_context.column == token.column:
                 return make_separator(last_context, token)
@@ -256,7 +263,7 @@ def handle_indentation(
                 )
 
                 log.debug(
-                    f"insert original layout token: {repr_token(current_token)}"
+                    "insert original layout token:" f"{repr_token(current_token)}"
                 )
                 yield current_token
                 for token in tokens:
@@ -272,7 +279,8 @@ def handle_indentation(
                         )
 
                         log.debug(
-                            f"insert original layout token: {repr_token(current_token)}"
+                            "insert original layout token:"
+                            f"{repr_token(current_token)}"
                         )
                         yield current_token
                         for token in tokens:
@@ -281,9 +289,7 @@ def handle_indentation(
                         if has_error:
                             return
                     case _:
-                        log.debug(
-                            f"insert default: {repr_token(current_token)}"
-                        )
+                        log.debug(f"insert default: {repr_token(current_token)}")
                         yield current_token
             case _:
                 log.debug(f"insert default: {repr_token(current_token)}")

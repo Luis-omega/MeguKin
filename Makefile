@@ -25,7 +25,7 @@ gen-stub:
 	@${sourceEnv};stubgen ${src}
 
 format:
-	@${sourceEnv};black -l 80 ${src}/ tests/
+	@${sourceEnv};black ${src}/ tests/
 
 requirements: 
 	@${sourceEnv};pip freeze > requirements.txt

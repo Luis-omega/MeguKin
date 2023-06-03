@@ -97,9 +97,7 @@ class ToAST(Transformer):
     ) -> RecordUpdate:
         return RecordUpdate(items)
 
-    def expression_record_item_single(
-        self, variable: Token
-    ) -> tuple[str, Range, None]:
+    def expression_record_item_single(self, variable: Token) -> tuple[str, Range, None]:
         return (variable.value, token2Range(variable), None)
 
     def expression_record_item(
@@ -176,9 +174,7 @@ class ToAST(Transformer):
     def expression_atom(self, atom: ExpressionT) -> ExpressionT:
         return atom
 
-    def expression_selector(
-        self, atom: ExpressionT, *remain: Token
-    ) -> ExpressionT:
+    def expression_selector(self, atom: ExpressionT, *remain: Token) -> ExpressionT:
         if len(remain) == 0:
             return atom
         else:
@@ -199,18 +195,16 @@ class ToAST(Transformer):
             )
         return out
 
-    def expression_operators(
-        self, *allValues: ExpressionT | Operator
-    ) -> ExpressionT:
+    def expression_operators(self, *allValues: ExpressionT | Operator) -> ExpressionT:
         match allValues:
             case [value]:
                 return value
             # Grammar guaranty that we always have a value
             case _:
                 firstValue = allValues[0]
-                acc1: IntercalatedList[
-                    ExpressionT, Operator
-                ] = IntercalatedListFist(firstValue)
+                acc1: IntercalatedList[ExpressionT, Operator] = IntercalatedListFist(
+                    firstValue
+                )
                 acc2: IntercalatedList[Operator, ExpressionT]
                 is_operator = True
                 for value in allValues[1:]:
@@ -221,9 +215,7 @@ class ToAST(Transformer):
                         acc1 = IntercalatedListSecond(value, acc2)
                         is_operator = True
 
-                free_variables = set.union(
-                    *(i.free_variables for i in allValues)
-                )
+                free_variables = set.union(*(i.free_variables for i in allValues))
                 return OperatorsWithoutMeaning(
                     acc1,
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
@@ -364,9 +356,7 @@ class ToAST(Transformer):
             acc = mergeRanges(acc, i._range)
         return Constructor(name.value, realTypes, acc)
 
-    def data_type_constructors(
-        self, sep: list[Constructor]
-    ) -> list[Constructor]:
+    def data_type_constructors(self, sep: list[Constructor]) -> list[Constructor]:
         return sep
 
     # ------------------ Types ------------------
@@ -389,9 +379,7 @@ class ToAST(Transformer):
             return out
 
     # ------------------ Top ------------------
-    def top_variable_declaration(
-        self, name: Token, colon, _type: TypeT
-    ) -> Declaration:
+    def top_variable_declaration(self, name: Token, colon, _type: TypeT) -> Declaration:
         return Declaration(
             name.value, _type, mergeRanges(token2Range(name), _type._range)
         )
