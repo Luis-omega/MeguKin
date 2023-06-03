@@ -25,6 +25,8 @@ ExpressionT = Union[
     "Let",
 ]
 
+# TODO: Add comparision without ranges
+
 
 class Expression:
     pass
@@ -166,6 +168,7 @@ class Selector(Expression):
     ) -> None:
         self.expression = expression
         self.fields = fields
+        self._range = _range
 
     def __str__(self):
         return repr(self)
@@ -176,24 +179,20 @@ class Selector(Expression):
 
 class AnnotatedExpression(Expression):
     expression: ExpressionT
-    annotation: Optional[TypeT]
+    annotation: TypeT
     _range: Range
 
     def __init__(
         self,
         expression: ExpressionT,
-        annotation: Optional[TypeT],
-        _range: Range,
+        annotation: TypeT,
     ):
         self.expression = expression
         self.annotation = annotation
-        self._range = _range
-
-    def pretty(self):
-        return f"({self.expression.pretty()}:{self.annotation.pretty()})"
+        self._range = mergeRanges(expression._range, annotation._range)
 
     def __str__(self):
-        return f"AnnotatedExpression({self.expression},{self.annotation})"
+        return repr(self)
 
     def __repr__(self):
         return f"AnnotatedExpression({self.expression},{self.annotation})"
@@ -363,7 +362,6 @@ class Function(Expression):
         self.patterns = patterns
         self.expression = expression
         self._range = _range
-        self.bound_variables = set.union(*(i.bound_variables for i in patterns))
 
     def __str__(self):
         return f"\\ {str(self.patterns)} -> ({str(self.value)})"
@@ -373,20 +371,18 @@ class Function(Expression):
 
 
 class LetBinding(Expression):
-    name: Token
+    pattern: PatternMatchT
     expression: ExpressionT
     _range: Range
-    bound_variables: set[str]
 
     def __init__(
         self,
-        name: Token,
+        pattern: PatternMatchT,
         expression: ExpressionT,
     ):
-        self.name = name
+        self.pattern = pattern
         self.expression = expression
-        self._range = mergeRanges(token2Range(name), expression._range)
-        self.bound_variables = set(name.value)
+        self._range = mergeRanges(pattern._range, expression._range)
 
     def __str__(self):
         return f"{str(self.name)} = {str(self.expression)}"
@@ -399,7 +395,6 @@ class Let(Expression):
     bindings: list[LetBinding]
     expression: ExpressionT
     _range: Range
-    bound_variables: set[str]
 
     def __init__(
         self,
@@ -409,7 +404,6 @@ class Let(Expression):
         self.bindings = bindings
         self.expression = expression
         self._range = mergeRanges(bindings[0]._range, expression._range)
-        self.bound_variables = set(*map(lambda x: x.bound_variables, bindings))
 
     def __str__(self):
         bindings = "".join(f"({str(i)})" for i in self.bindings)

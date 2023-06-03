@@ -143,12 +143,13 @@ expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
 
 expression_annotation: expression 
-  | expression COLON type_expression_inner
-  | expression COLON LAYOUT_START type_expression_inner LAYOUT_END
+  | expression COLON type_expression_inner -> expression_annotation_no_layout
+  | expression COLON LAYOUT_START type_expression_inner LAYOUT_END -> expression_annotation_layout
 
 
 expression_type_arg : AT type_atom
 
+// TODO: Ass strings
 expression_literal : INT
 
 expression_atom: expression_variable
@@ -168,33 +169,33 @@ expression_application: expression_selector+
 expression_operators: (expression_application expression_operator)* expression_application
 
 expression_case_single : pattern_match RIGHT_ARROW expression
-  | pattern_match RIGHT_ARROW  LAYOUT_START expression LAYOUT_END
+  | pattern_match RIGHT_ARROW  LAYOUT_START expression LAYOUT_END -> expression_case_single_layout
 
 expression_case_cases : sep_by1{expression_case_single,LAYOUT_SEPARATOR}
 
 expression_case: CASE expression OF expression_case_cases 
-  | CASE LAYOUT_START expression LAYOUT_END OF expression_case_cases 
-  | CASE expression OF LAYOUT_START expression_case_cases  LAYOUT_END
-  | CASE LAYOUT_START expression LAYOUT_END OF LAYOUT_START expression_case_cases LAYOUT_END
+  | CASE LAYOUT_START expression LAYOUT_END OF expression_case_cases  -> expression_case_2
+  | CASE expression OF LAYOUT_START expression_case_cases  LAYOUT_END -> expression_case_3
+  | CASE LAYOUT_START expression LAYOUT_END OF LAYOUT_START expression_case_cases LAYOUT_END -> expression_case_4
   | expression_operators -> expression_case_operators
 
 expression_lambda_arguments: pattern_match+
 
 expression_lambda : LAMBDA expression_lambda_arguments RIGHT_ARROW expression
-  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW expression
-  | LAMBDA expression_lambda_arguments RIGHT_ARROW LAYOUT_START expression LAYOUT_END
-  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW LAYOUT_START expression LAYOUT_END
+  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW expression -> expression_lambda_2
+  | LAMBDA expression_lambda_arguments RIGHT_ARROW LAYOUT_START expression LAYOUT_END -> expression_lambda_3
+  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW LAYOUT_START expression LAYOUT_END -> expression_lambda_4
   | expression_case -> expression_lambda_case
 
 expression_let_binding: pattern_match EQUAL expression
 
 expression_let_inside: sep_by1{expression_let_binding,LAYOUT_SEPARATOR}
 
-expression_let: LET LAYOUT_START expression_let_inside LAYOUT_END IN LAYOUT_START expression LAYOUT_END
-  | LET LAYOUT_START expression_let_inside LAYOUT_END IN expression 
+expression_let: LET LAYOUT_START expression_let_inside LAYOUT_END IN LAYOUT_START expression LAYOUT_END 
+  | LET LAYOUT_START expression_let_inside LAYOUT_END IN expression  -> expression_let_2
   // the use of expression_let_binding improves parser errors
-  | LET expression_let_binding IN LAYOUT_START expression LAYOUT_END
-  | LET expression_let_binding IN expression 
+  | LET expression_let_binding IN LAYOUT_START expression LAYOUT_END-> expression_let_3
+  | LET expression_let_binding IN expression -> expression_let_4
   | expression_lambda -> expression_let_lambda
 
 expression: expression_let
