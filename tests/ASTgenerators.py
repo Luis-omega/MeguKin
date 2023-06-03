@@ -1,6 +1,13 @@
 from typing import List
 
-from hypothesis.strategies import composite, integers, from_regex, text, lists, integers
+from hypothesis.strategies import (
+    composite,
+    integers,
+    from_regex,
+    text,
+    lists,
+    integers,
+)
 
 from MeguKin.SugaredSyntaxTree.Expression import (
     Literal,
@@ -18,7 +25,12 @@ from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchConstructor,
 )
 from MeguKin.SugaredSyntaxTree.Type import TypeName, TypeArrow
-from MeguKin.SugaredSyntaxTree.Top import Definition, Declaration, DataType, Constructor
+from MeguKin.SugaredSyntaxTree.Top import (
+    Definition,
+    Declaration,
+    DataType,
+    Constructor,
+)
 
 from MeguKin.SugaredSyntaxTree.Range import Range
 
@@ -39,7 +51,9 @@ def gen_operator(draw):
 @composite
 def gen_composite_operator(draw):
     tail = draw(text(gen_operator_alone_character(), min_size=1))
-    head = draw(gen_operator_alone_character() | gen_operator_not_alone_character())
+    head = draw(
+        gen_operator_alone_character() | gen_operator_not_alone_character()
+    )
     return head + tail
 
 
@@ -99,7 +113,9 @@ def gen_annotated_expression(draw):
     expression = draw(gen_expression())
     annotation = draw(gen_type())
     free_variables = expression.free_variables
-    return AnnotatedExpression(expression, annotation, emptyRange, free_variables)
+    return AnnotatedExpression(
+        expression, annotation, emptyRange, free_variables
+    )
 
 
 @composite
@@ -165,8 +181,12 @@ def gen_pattern_match_constructor(draw):
     if len(patterns) == 0:
         return PatternMatchConstructor(name, patterns, emptyRange, set())
     else:
-        bound_variables = set.union(*(pattern.bound_variables for pattern in patterns))
-        return PatternMatchConstructor(name, patterns, emptyRange, bound_variables)
+        bound_variables = set.union(
+            *(pattern.bound_variables for pattern in patterns)
+        )
+        return PatternMatchConstructor(
+            name, patterns, emptyRange, bound_variables
+        )
 
 
 @composite
@@ -229,5 +249,7 @@ def gen_constructor_definition(draw):
 @composite
 def gen_top_data_constructor(draw):
     name = draw(gen_capitalized_identifier())
-    constructors = draw(lists(gen_constructor_definition(), min_size=1, max_size=6))
+    constructors = draw(
+        lists(gen_constructor_definition(), min_size=1, max_size=6)
+    )
     return DataType(name, constructors, emptyRange)

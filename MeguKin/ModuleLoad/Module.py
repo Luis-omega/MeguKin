@@ -24,6 +24,8 @@ class LoadedModules:
     pass
 
 
-ModulePreviewInfo = NamedTuple("ModulePreviewInfo", [("name", str), ("path", Path)])
+ModulePreviewInfo = NamedTuple(
+    "ModulePreviewInfo", [("name", str), ("path", Path)]
+)
 
 ModulesPreviewInfo = NewType("ModulesPreviewInfo", dict[str, Path])

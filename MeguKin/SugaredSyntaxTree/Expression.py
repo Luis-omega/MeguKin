@@ -143,7 +143,9 @@ class Record(Expression):
     _map: list[tuple[str, Range, Optional[ExpressionT]]]
     _range: Range
 
-    def __init__(self, _map: list[tuple[str, Range, Optional[ExpressionT]]]) -> None:
+    def __init__(
+        self, _map: list[tuple[str, Range, Optional[ExpressionT]]]
+    ) -> None:
         self._map = _map
         self._range = mergeRanges(_map[-1][1], _map[0][1])
 
@@ -222,7 +224,9 @@ class Application(Expression):
         self._range = _range
 
     def pretty(self):
-        if isinstance(self.function, Literal) or isinstance(self.function, Variable):
+        if isinstance(self.function, Literal) or isinstance(
+            self.function, Variable
+        ):
             return f"{self.function.pretty()} {self.argument.pretty()}"
         else:
             return f"({self.function.pretty()}) ({self.argument.pretty()})"
@@ -331,7 +335,9 @@ class Case(Expression):
     cases: list[CaseCase]
     _range: Range
 
-    def __init__(self, expression: ExpressionT, cases: list[CaseCase], _range: Range):
+    def __init__(
+        self, expression: ExpressionT, cases: list[CaseCase], _range: Range
+    ):
         self.expression = expression
         self.cases = cases
         self._range = _range

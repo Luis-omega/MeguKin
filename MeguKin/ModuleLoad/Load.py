@@ -38,7 +38,9 @@ def load_module_imports(
 
 def load_modules(
     roots: list[str], source_paths: list[Path], lark: Lark
-) -> ModuleLoadError | tuple[LoadedModules, dict[str, Module | ModuleLoadError]]:
+) -> (
+    ModuleLoadError | tuple[LoadedModules, dict[str, Module | ModuleLoadError]]
+):
     """
     @roots are the module names
     @source_paths are paths to look for sources, it must include target path
@@ -47,11 +49,15 @@ def load_modules(
     if isinstance(roots_paths_result, ModuleLoadError):
         return roots_paths_result
 
-    relations_result = find_modules_relations(roots_paths_result, source_paths, lark)
+    relations_result = find_modules_relations(
+        roots_paths_result, source_paths, lark
+    )
     if isinstance(relations_result, ModuleLoadError):
         return relations_result
 
-    imports_result = find_module_imports(roots_paths_result, relations_result, lark)
+    imports_result = find_module_imports(
+        roots_paths_result, relations_result, lark
+    )
     if isinstance(imports_result, ModuleLoadError):
         return imports_result
 
@@ -65,7 +71,9 @@ def load_modules(
 def load_modules_with(
     root: list[str], loaded: LoadedModules, lark: Lark
 ) -> dict[str, Module | ModuleLoadError]:
-    return dict(map(lambda name: (name, load_module_with(name, loaded, lark)), root))
+    return dict(
+        map(lambda name: (name, load_module_with(name, loaded, lark)), root)
+    )
 
 
 def load_module_with(

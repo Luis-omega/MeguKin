@@ -173,7 +173,9 @@ def make_context_with_next_token(
                 return (False, [])
         else:
             out.append(
-                make_token_error(next_token, LetFirstValueBeforeLet(token, next_token))
+                make_token_error(
+                    next_token, LetFirstValueBeforeLet(token, next_token)
+                )
             )
             return (True, out)
 
@@ -182,10 +184,15 @@ def make_separator(context: ContextItem, token: Token) -> Token:
     return Token.new_borrow_pos("LAYOUT_SEPARATOR", "\\;", token)
 
 
-def gen_separator_if_same_level(token: Token, stack: ContextStack) -> Optional[Token]:
+def gen_separator_if_same_level(
+    token: Token, stack: ContextStack
+) -> Optional[Token]:
     match stack:
         case [*others, last_context]:
-            if last_context.column == token.column and last_context.line == token.line:
+            if (
+                last_context.column == token.column
+                and last_context.line == token.line
+            ):
                 return None
             elif last_context.column == token.column:
                 return make_separator(last_context, token)
@@ -208,7 +215,9 @@ def unwind_stack(stack: ContextStack, token: Token) -> Iterable[Token]:
 
 
 def handle_indentation(
-    info: FileInfo, previous_stack: Optional[ContextStack], stream: Stream[Token]
+    info: FileInfo,
+    previous_stack: Optional[ContextStack],
+    stream: Stream[Token],
 ) -> Iterable[Token]:
     root_context = ContextItem(
         0, 0, Token("SOF", "start_of_file", 0, 0, 0, 0, 0, 0), Context.ROOT
@@ -246,7 +255,9 @@ def handle_indentation(
                     current_token, context, stream, stack
                 )
 
-                log.debug(f"insert original layout token: {repr_token(current_token)}")
+                log.debug(
+                    f"insert original layout token: {repr_token(current_token)}"
+                )
                 yield current_token
                 for token in tokens:
                     log.debug(f"insert layout: {repr_token(token)}")
@@ -270,7 +281,9 @@ def handle_indentation(
                         if has_error:
                             return
                     case _:
-                        log.debug(f"insert default: {repr_token(current_token)}")
+                        log.debug(
+                            f"insert default: {repr_token(current_token)}"
+                        )
                         yield current_token
             case _:
                 log.debug(f"insert default: {repr_token(current_token)}")

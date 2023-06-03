@@ -63,7 +63,8 @@ class DuplicatedNames(ModuleCorrectnessError):
 def check_top_variables_have_defintions_and_types_together_and_join_them(
     moduleContent: List[TopT],
 ) -> Tuple[
-    List[ModuleCorrectnessError], List[Union[DefinitionAndDeclaration, DataType]]
+    List[ModuleCorrectnessError],
+    List[Union[DefinitionAndDeclaration, DataType]],
 ]:
     out: List[Union[DefinitionAndDeclaration, DataType]] = []
     errorOut: List[ModuleCorrectnessError] = []
@@ -82,9 +83,13 @@ def check_top_variables_have_defintions_and_types_together_and_join_them(
                 out.append(DefinitionAndDeclaration(top, previousDeclaration))
             else:
                 errorOut.append(
-                    DeclarationWithoutFollowingDefinition(previousDeclaration, top)
+                    DeclarationWithoutFollowingDefinition(
+                        previousDeclaration, top
+                    )
                 )
-                previousDeclaration = top if isinstance(top, Declaration) else None
+                previousDeclaration = (
+                    top if isinstance(top, Declaration) else None
+                )
     return (errorOut, out)
 
 
@@ -105,7 +110,11 @@ def check_top_vaiables_have_only_one_definition(
         return None
     else:
         return DuplicatedNames(
-            [item for item, count in Counter(variableNames).items() if count > 1]
+            [
+                item
+                for item, count in Counter(variableNames).items()
+                if count > 1
+            ]
         )
 
 
@@ -121,7 +130,9 @@ def find_free_variables(expression: ExpressionT) -> Set[str]:
         case Application(function=f, argument=arg):
             return find_free_variables(f).union(find_free_variables(arg))
         case Function(pattern=p, value=val):
-            return find_free_variables(val) - find_pattern_match_binded_variables(p)
+            return find_free_variables(
+                val
+            ) - find_pattern_match_binded_variables(p)
         case AnnotatedExpression(expression=e, annotation=_):
             return find_free_variables(e)
         case OperatorsWithoutMeaning(listOfOperatorExpression=op_or_exp):
@@ -137,8 +148,12 @@ def find_pattern_match_binded_variables(pattern: PatternMatchT) -> Set[str]:
         case PatternMatchVariable(name=n):
             return set([n])
         case PatternMatchConstructor(name=n, patterns=p):
-            return set().union(*[find_pattern_match_binded_variables(i) for i in p])
+            return set().union(
+                *[find_pattern_match_binded_variables(i) for i in p]
+            )
 
 
-def semantic_analysis(desugared_trees: list[Top], modules: LoadedModules) -> list[AST]:
+def semantic_analysis(
+    desugared_trees: list[Top], modules: LoadedModules
+) -> list[AST]:
     pass

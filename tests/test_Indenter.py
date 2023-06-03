@@ -8,7 +8,12 @@ from pathlib import Path
 from MeguKin.Parser.Parser import load_grammar
 from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
-from MeguKin.Parser.Indentation import handle_indentation, Context, Stream, ContextStack
+from MeguKin.Parser.Indentation import (
+    handle_indentation,
+    Context,
+    Stream,
+    ContextStack,
+)
 
 lark_parser = None
 

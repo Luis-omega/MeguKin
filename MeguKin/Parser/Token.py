@@ -23,7 +23,15 @@ class Token(lark.Token):
         end_pos: int,
     ):
         inst = super(Token, cls).__new__(
-            cls, type_, value, start_pos, line, column, end_line, end_column, end_pos
+            cls,
+            type_,
+            value,
+            start_pos,
+            line,
+            column,
+            end_line,
+            end_column,
+            end_pos,
         )
         return inst
 

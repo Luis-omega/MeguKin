@@ -69,7 +69,10 @@ class DataType:
     _range: Range
 
     def __init__(
-        self, name: str, constructors: list[ConstructorDefinition], _range: Range
+        self,
+        name: str,
+        constructors: list[ConstructorDefinition],
+        _range: Range,
     ):
         self.name = name
         self.constructors = constructors
