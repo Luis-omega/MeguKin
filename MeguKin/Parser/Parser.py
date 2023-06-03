@@ -9,6 +9,7 @@ from MeguKin.Parser.SegmentFile import (
     segment_file,
     FileSegment,
 )
+from MeguKin.Parser.Indentation import Indenter
 from MeguKin.File import FileInfo
 
 
@@ -17,7 +18,13 @@ class LoadGrammarError(MeguKinError):
 
 
 class LarkLoadError(MeguKinError):
-    pass
+    msg: str
+
+    def __init__(self, msg: str):
+        self.msg = msg
+
+    def __repr__(self):
+        return f'LarkLoadError("{self.msg}")'
 
 
 class ParserError(MeguKinError):
@@ -29,29 +36,31 @@ class FileLoadError(MeguKinError):
 
 
 def load_grammar(
-    debug: Optional[bool] = None,
+    debug: Optional[bool] = None, start_symbols: Optional[list[str]] = ["top"]
 ) -> LoadGrammarError | LarkLoadError | Lark:
     if debug is None:
         debug = False
     grammarPath = "MeguKin/Parser/grammar.lark"
-    startSymbols = ["top"]
+    if start_symbols is None:
+        start_symbols = ["top"]
     try:
         with open(grammarPath, "r") as grammarFile:
             grammar = grammarFile.read()
             try:
                 parser = Lark(
                     grammar,
-                    start=startSymbols,
+                    start=start_symbols,
                     debug=debug,
                     cache=None,
-                    propagate_positions=True,
+                    propagate_positions=False,
                     maybe_placeholders=True,
                     keep_all_tokens=True,
                     parser="lalr",
                     lexer="basic",
+                    postlex=Indenter(),
                 )
-            except:
-                return LarkLoadError()
+            except Exception as e:
+                return LarkLoadError(str(e))
     except OSError:
         return LoadGrammarError()
     return parser

@@ -26,6 +26,10 @@ from typing import (
 )
 from enum import Enum, auto
 import logging
+from abc import ABC, abstractmethod
+
+from lark.lark import PostLex
+import lark
 
 
 from MeguKin.Parser.Token import Token
@@ -229,7 +233,6 @@ def unwind_stack(stack: ContextStack, token: Token) -> Iterable[Token]:
 
 
 def handle_indentation(
-    info: FileInfo,
     previous_stack: Optional[ContextStack],
     stream: Stream[Token],
 ) -> Iterable[Token]:
@@ -359,3 +362,10 @@ def handle_indentation(
             case _:
                 log.debug("removing context")
                 yield make_layout_end(eof_token, current)
+
+
+class Indenter(PostLex):
+    def process(self, stream: Iterator[lark.Token]) -> Iterator[Token]:
+        return handle_indentation(
+            None, Stream(map(lambda x: Token.from_lark(x), stream))
+        )

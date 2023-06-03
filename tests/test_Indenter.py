@@ -10,7 +10,6 @@ from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
 from MeguKin.Parser.Indentation import (
     handle_indentation,
-    Context,
     Stream,
     ContextStack,
 )
@@ -18,23 +17,20 @@ from MeguKin.Parser.Indentation import (
 lark_parser = None
 
 
-# this must memoize the lexer generated to avoid
-# multiple initialization and load of the same grammar
 def get_lexer() -> Callable[[str], Iterator[lark.Token]]:
     global lark_parser
     if lark_parser is None:
         lark_parser = load_grammar(True)
         if not isinstance(lark_parser, Lark):
-            raise Exception("Can't get lexer for tests")
+            raise Exception(f"Can't get lexer for tests {lark_parser}")
     return lark_parser.lex
 
 
 def make_test(example: str, state: Optional[ContextStack], expected: list[str]):
     lexer = get_lexer()
-    info = FileInfo("test", Path("test"))
     regular_tokens = list(lexer(example))
     our_tokens = Stream(map(lambda x: Token.from_lark(x), regular_tokens))
-    new_tokens = list(handle_indentation(info, state, our_tokens))
+    new_tokens = list(handle_indentation(state, our_tokens))
     print(new_tokens)
     tokens_type = [token.type for token in new_tokens]
     print(new_tokens[-1].column, new_tokens[-1].line)
