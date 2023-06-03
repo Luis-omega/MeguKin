@@ -26,24 +26,24 @@ if "__main__" == __name__:
     parser = load_grammar()
     import sys
 
-    if len(sys.argv) == 2:
-        result = parser.parse(sys.argv[1])
-        print(result.pretty())
-        # astResult = ToAST().transform(result)
-        # print(astResult)
-        # print(astResult.pretty())
-    else:
-        with open("grammar_test") as test_file:
-            content = test_file.read()
-            # lexed = parser.lex(content)
-            # result2 = parser.parse_interactive(content)
-            # for i in lexed:
-            #    print(repr(i))
-            #    result2.feed_token(i)
-            #    print(result2.accepts())
+    # if len(sys.argv) == 2:
+    #    result = parser.parse(sys.argv[1])
+    #    print(result.pretty())
+    #    # astResult = ToAST().transform(result)
+    #    # print(astResult)
+    #    # print(astResult.pretty())
+    # else:
+    #    with open("grammar_test") as test_file:
+    #        content = test_file.read()
+    #        # lexed = parser.lex(content)
+    #        # result2 = parser.parse_interactive(content)
+    #        # for i in lexed:
+    #        #    print(repr(i))
+    #        #    result2.feed_token(i)
+    #        #    print(result2.accepts())
 
-            result = parser.parse(content)
-            print(result.pretty())
-        # astResult = ToAST().transform(result)
-        # print(astResult)
-        # print(astResult.pretty())
+    #        result = parser.parse(content)
+    #        print(result.pretty())
+    #    # astResult = ToAST().transform(result)
+    #    # print(astResult)
+    #    # print(astResult.pretty())

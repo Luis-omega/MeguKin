@@ -244,6 +244,7 @@ def handle_indentation(
 
     last_line = 0
     current_token: Optional[Token] = stream.get_next()
+    last_token = current_token
     while current_token is not None:
         log.debug(f"New loop\ntoken: {repr_token(current_token)}")
         log.debug(f"context: {stack}")
@@ -261,41 +262,69 @@ def handle_indentation(
                 if token.type == "LayoutError":
                     return
             log.debug(f"context after unwind: {stack}")
+            in_import = current_token.type == "IMPORT"
 
         match current_token.type:
-            case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "COLON" | "DOUBLE_COLON":
-                context = getattr(Context, current_token.type)
-                (has_error, tokens) = make_context_with_next_token(
-                    current_token, context, stream, stack
-                )
-
+            case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "COLON" | "DOUBLE_COLON" | "FORALL":
                 log.debug(
                     "insert original layout token:"
                     f"{repr_token(current_token)}"
                 )
                 yield current_token
+
+                context = getattr(Context, current_token.type)
+                (has_error, tokens) = make_context_with_next_token(
+                    current_token, context, stream, stack
+                )
                 for token in tokens:
                     log.debug(f"insert layout: {repr_token(token)}")
                     yield token
                 if has_error:
                     return
-            case "EQUAL":
+            case "RIGHT_ARROW":
                 match stack:
-                    case [ContextItem(0, 0, _, Context.ROOT)]:
-                        (has_error, tokens) = make_context_with_next_token(
-                            current_token, Context.LET, stream, stack
-                        )
-
+                    case [
+                        *_,
+                        ContextItem(_, _, _, Context.OF)
+                        | ContextItem(_, _, _, Context.LAMBDA),
+                    ]:
                         log.debug(
                             "insert original layout token:"
                             f"{repr_token(current_token)}"
                         )
                         yield current_token
+                        context = getattr(Context, current_token.type)
+                        (has_error, tokens) = make_context_with_next_token(
+                            current_token, context, stream, stack
+                        )
+
                         for token in tokens:
                             log.debug(f"insert layout: {repr_token(token)}")
                             yield token
                         if has_error:
                             return
+                    case _:
+                        log.debug(f"insert default: repr_token{current_token}")
+                        yield current_token
+            case "EQUAL":
+                match stack:
+                    case [ContextItem(0, 0, _, Context.ROOT)]:
+                        log.debug(f"insert: {repr_token(current_token)}")
+                        yield current_token
+                        if not in_import:
+                            (has_error, tokens) = make_context_with_next_token(
+                                current_token, Context.EQUAL, stream, stack
+                            )
+
+                            log.debug(
+                                "insert original layout token:"
+                                f"{repr_token(current_token)}"
+                            )
+                            for token in tokens:
+                                log.debug(f"insert layout: {repr_token(token)}")
+                                yield token
+                            if has_error:
+                                return
                     case _:
                         log.debug(
                             f"insert default: {repr_token(current_token)}"
@@ -305,4 +334,28 @@ def handle_indentation(
                 log.debug(f"insert default: {repr_token(current_token)}")
                 yield current_token
 
+        last_token = current_token
         current_token = stream.get_next()
+
+    log.debug("removing remaining context")
+    if last_token is None:
+        eof_token = Token("EOF", "EOF", 0, 0, 0, 0, 0, 0)
+    else:
+        eof_token = Token(
+            "EOF",
+            "EOF",
+            last_token.end_pos,
+            last_token.end_line,
+            last_token.end_column,
+            last_token.end_line,
+            last_token.end_column,
+            last_token.end_pos,
+        )
+    while stack:
+        current = stack.pop()
+        match current:
+            case ContextItem(0, 0, _, Context.ROOT):
+                return
+            case _:
+                log.debug("removing context")
+                yield make_layout_end(eof_token, current)
