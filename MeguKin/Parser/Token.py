@@ -22,10 +22,11 @@ class Token(lark.Token):
         end_column: int,
         end_pos: int,
     ):
-        inst = super(Token, cls).__new__(cls, type_, value, start_pos)
+        inst = super(Token, cls).__new__(
+            cls, type_, value, start_pos, line, column, end_line, end_column, end_pos
+        )
         return inst
 
-    # FIXME: for some reason this doesn't work, it sets int as None
     def from_lark(token: lark.Token):
         return Token(
             token.type,

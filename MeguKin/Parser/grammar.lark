@@ -118,16 +118,17 @@ sep_by1{p,sep}: p [(sep p)+]
 // --------------------- Expressions  ---------------------
 
 
-expression_record_update_item : VARIABLE_IDENTIFIER EQUAL LAYOUT_START expression LAYOUT_END
+expression_record_update_item : VARIABLE_IDENTIFIER EQUAL expression 
 
-expression_record_update_inner : LAYOUT_START sep_by1{expression_record_update_item,COMMA} LAYOUT_END
+expression_record_update_inner : sep_by1{expression_record_update_item,COMMA}
 
 expression_record_update :  braces{expression_record_update_inner}
 
-expression_record_item : VARIABLE_IDENTIFIER COLON LAYOUT_START expression LAYOUT_END
+expression_record_item : VARIABLE_IDENTIFIER COLON expression 
+  | VARIABLE_IDENTIFIER COLON LAYOUT_START expression   LAYOUT_END -> expression_record_item_layout
   | VARIABLE_IDENTIFIER -> expression_record_item_single
 
-expression_record_inner : LAYOUT_START sep_by1{expression_record_item,COMMA} LAYOUT_END
+expression_record_inner : sep_by1{expression_record_item,COMMA} 
 
 expression_record : braces{expression_record_inner}
 
@@ -140,6 +141,8 @@ expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
 
 expression_annotation: expression [COLON type_expression_inner]
+  | expression [COLON LAYOUT_START type_expression_inner LAYOUT_END]
+
 
 expression_type_arg : AT type_atom
 
@@ -154,6 +157,7 @@ expression_atom: expression_variable
   | parens{expression_operator}
   | parens{expression_annotation}
 
+// Can we use a real token for the last part?
 expression_selector: expression_atom (DOT VARIABLE_IDENTIFIER)*
 
 expression_application: expression_selector+
@@ -161,22 +165,33 @@ expression_application: expression_selector+
 expression_operators: (expression_application expression_operator)* expression_application
 
 expression_case_single : pattern_match RIGHT_ARROW expression
+  | pattern_match RIGHT_ARROW  LAYOUT_START expression LAYOUT_END
 
-expression_case_cases : sep_by1{expression_case_single,OF_END}
+expression_case_cases : sep_by1{expression_case_single,LAYOUT_SEPARATOR}
 
-expression_case: CASE expression OF expression_case_cases OF_END
+expression_case: CASE expression OF expression_case_cases 
+  | CASE LAYOUT_START expression LAYOUT_END OF expression_case_cases 
+  | CASE expression OF LAYOUT_START expression_case_cases  LAYOUT_END
+  | CASE LAYOUT_START expression LAYOUT_END OF LAYOUT_START expression_case_cases LAYOUT_END
   | expression_operators -> expression_case_operators
 
 expression_lambda_arguments: pattern_match+
 
-expression_lambda : LAMBDA expression_lambda_arguments RIGHT_ARROW expression LAMBDA_END
+expression_lambda : LAMBDA expression_lambda_arguments RIGHT_ARROW expression
+  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW expression
+  | LAMBDA expression_lambda_arguments RIGHT_ARROW LAYOUT_START expression LAYOUT_END
+  | LAMBDA LAYOUT_START expression_lambda_arguments LAYOUT_END RIGHT_ARROW LAYOUT_START expression LAYOUT_END
   | expression_case -> expression_lambda_case
 
-expression_let_binding: pattern_match EQUAL LAYOUT_START expression LAYOUT_END
+expression_let_binding: pattern_match EQUAL expression
 
-expression_let_inside: expression_let_binding+
+expression_let_inside: sep_by1{expression_let_binding,LAYOUT_SEPARATOR}
 
 expression_let: LET LAYOUT_START expression_let_inside LAYOUT_END IN LAYOUT_START expression LAYOUT_END
+  | LET LAYOUT_START expression_let_inside LAYOUT_END IN expression 
+  // the use of expression_let_binding improves parser errors
+  | LET expression_let_binding IN LAYOUT_START expression LAYOUT_END
+  | LET expression_let_binding IN expression 
   | expression_lambda -> expression_let_lambda
 
 expression: expression_let
@@ -213,6 +228,7 @@ data_type_constructors: sep_by1{data_type_constructor, PIPE}
 
 
 type_record_item : VARIABLE_IDENTIFIER COLON type_expression_inner
+  | VARIABLE_IDENTIFIER COLON LAYOUT_START type_expression_inner LAYOUT_END
 
 type_record_inner : sep_by1{type_record_item,COMMA}
 

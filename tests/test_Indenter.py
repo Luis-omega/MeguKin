@@ -27,9 +27,9 @@ def get_lexer() -> Callable[[str], Iterator[lark.Token]]:
 def make_test(example: str, state: Optional[ContextStack], expected: list[str]):
     lexer = get_lexer()
     info = FileInfo("test", Path("test"))
-    regular_tokens = Stream(lexer(example))
-    # our_tokens = Stream(map(lambda x: Token.from_lark(x),regular_tokens))
-    new_tokens = list(handle_indentation(info, state, regular_tokens))
+    regular_tokens = list(lexer(example))
+    our_tokens = Stream(map(lambda x: Token.from_lark(x), regular_tokens))
+    new_tokens = list(handle_indentation(info, state, our_tokens))
     print(new_tokens)
     tokens_type = [token.type for token in new_tokens]
     print(new_tokens[-1].column, new_tokens[-1].line)
@@ -39,22 +39,16 @@ def make_test(example: str, state: Optional[ContextStack], expected: list[str]):
 class TestLet:
     @staticmethod
     def test_same_line_single():
-        example = "let a = b in w\nc"
+        example = "let a = b in w\n1"
         state = None
         expected = [
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "VARIABLE_IDENTIFIER",
+            "INT",
         ]
         make_test(example, state, expected)
 
@@ -65,36 +59,19 @@ class TestLet:
         expected = [
             # let a =
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             # let b =
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             # c in d
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
             # in e
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
-            "IN",
-            "LAYOUT_START",
-            "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
             "INT",
         ]
         make_test(example, state, expected)
@@ -106,29 +83,17 @@ class TestLet:
         expected = [
             # let a = b in
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             # let c = d in e
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "INT",
         ]
         make_test(example, state, expected)
@@ -140,41 +105,23 @@ class TestLet:
         expected = [
             # let a = b in
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             # let c = d in
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             # let e = f in g
             "LET",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "IN",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
-            "LAYOUT_END",
-            "LAYOUT_END",
             "INT",
         ]
         make_test(example, state, expected)
@@ -194,9 +141,7 @@ class TestLet:
             "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
             "LAYOUT_END",
             "IN",
             "LAYOUT_START",
@@ -207,14 +152,13 @@ class TestLet:
         make_test(example, state, expected)
 
     @staticmethod
-    def test_different_line_two():
+    def test_different_line_two_second_same_line():
         example = """
     let 
         a = b
     in
-        let c = d
-        in
-            e
+        let c = d in
+                    e
          f
 1
         """
@@ -225,9 +169,47 @@ class TestLet:
             "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_END",
+            "IN",
+            "LAYOUT_START",
+            # let c = d in e
+            "LET",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "IN",
             "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "LAYOUT_END",
+            # f
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_END",
+            "INT",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_different_line_two_second_other_line():
+        example = """
+    let 
+        a = b
+    in
+        let 
+            c = d 
+        in
+           e
+         f
+1
+        """
+        state = None
+        expected = [
+            # let a = b in
+            "LET",
+            "LAYOUT_START",
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
             "LAYOUT_END",
             "IN",
             "LAYOUT_START",
@@ -236,15 +218,54 @@ class TestLet:
             "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "EQUAL",
-            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
-            "LAYOUT_END",
             "LAYOUT_END",
             "IN",
             "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "LAYOUT_END",
             # f
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_END",
+            "INT",
+        ]
+        make_test(example, state, expected)
+
+    @staticmethod
+    def test_tree_definition_single_let():
+        example = """
+    let 
+        a = b
+        c = 
+         d
+        e = f
+    in
+     g
+1
+        """
+        state = None
+        expected = [
+            # let
+            "LET",
+            "LAYOUT_START",
+            # a = b
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_SEPARATOR",
+            # c = d
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_SEPARATOR",
+            # e = f
+            "VARIABLE_IDENTIFIER",
+            "EQUAL",
+            "VARIABLE_IDENTIFIER",
+            "LAYOUT_END",
+            # in g
+            "IN",
+            "LAYOUT_START",
             "VARIABLE_IDENTIFIER",
             "LAYOUT_END",
             "INT",
