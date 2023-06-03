@@ -187,7 +187,9 @@ def make_context_with_next_token(
                 return (False, [])
         else:
             out.append(
-                make_token_error(next_token, LetFirstValueBeforeLet(token, next_token))
+                make_token_error(
+                    next_token, LetFirstValueBeforeLet(token, next_token)
+                )
             )
             return (True, out)
 
@@ -196,10 +198,15 @@ def make_separator(context: ContextItem, token: Token) -> Token:
     return Token.new_borrow_pos("LAYOUT_SEPARATOR", "\\;", token)
 
 
-def gen_separator_if_same_level(token: Token, stack: ContextStack) -> Optional[Token]:
+def gen_separator_if_same_level(
+    token: Token, stack: ContextStack
+) -> Optional[Token]:
     match stack:
         case [*_, last_context]:
-            if last_context.column == token.column and last_context.line == token.line:
+            if (
+                last_context.column == token.column
+                and last_context.line == token.line
+            ):
                 return None
             elif last_context.column == token.column:
                 return make_separator(last_context, token)
@@ -263,7 +270,8 @@ def handle_indentation(
                 )
 
                 log.debug(
-                    "insert original layout token:" f"{repr_token(current_token)}"
+                    "insert original layout token:"
+                    f"{repr_token(current_token)}"
                 )
                 yield current_token
                 for token in tokens:
@@ -289,7 +297,9 @@ def handle_indentation(
                         if has_error:
                             return
                     case _:
-                        log.debug(f"insert default: {repr_token(current_token)}")
+                        log.debug(
+                            f"insert default: {repr_token(current_token)}"
+                        )
                         yield current_token
             case _:
                 log.debug(f"insert default: {repr_token(current_token)}")
