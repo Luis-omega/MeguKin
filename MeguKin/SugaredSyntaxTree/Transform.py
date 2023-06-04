@@ -196,7 +196,7 @@ class ToSST(Transformer):
         )
 
     def expression_literal(self, tok: Token) -> Literal:
-        return Literal(tok, token2Range(tok))
+        return Literal(tok)
 
     def expression_atom(self, atom: ExpressionT) -> ExpressionT:
         return atom

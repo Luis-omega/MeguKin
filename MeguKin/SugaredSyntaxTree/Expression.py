@@ -1,10 +1,13 @@
-from typing import Optional, Set, Union, TypeVar, Generic
+from typing import Optional, Set, Union, TypeVar, Generic, Callable
+from abc import abstractmethod
 
 from lark import Token
 
 from MeguKin.File import Range, token2Range, mergeRanges
 from MeguKin.SugaredSyntaxTree.Type import TypeT
 from MeguKin.SugaredSyntaxTree.PatternMatch import PatternMatchT
+from MeguKin.SugaredSyntaxTree.SST import SST, compare_list
+
 
 T = TypeVar("T")
 T2 = TypeVar("T2")
@@ -28,102 +31,69 @@ ExpressionT = Union[
 # TODO: Add comparision without ranges
 
 
-class Expression:
+class Expression(SST):
     pass
 
 
 class Literal(Expression):
-    value: Token
-    _range: Range
+    token: Token
 
-    def __init__(self, value: Token, _range: Range):
-        self.value = value
-        self._range = _range
+    def __init__(self, token: Token):
+        self.value = token
+        self._range = token2Range(token)
 
-    def __str__(self):
-        return f"{self.value}"
+    def compare(self, other: SST) -> bool:
+        if isinstance(other, Literal):
+            return self.token == other.token
+        return False
 
     def __repr__(self):
         return f"Literal({self.value})"
 
 
-class Variable(Expression):
+T_MetaVar = TypeVar("T_MetaVar", bound="MetaVar")
+
+
+class MetaVar(Expression):
     prefix: list[str]
     name: str
-    _range: Range
 
     def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
         self.prefix = prefix
         self.name = name
         self._range = _range
 
-    @staticmethod
-    def from_lark_token(token: Token) -> "Variable":
+    @classmethod
+    def from_lark_token(cls: type[T_MetaVar], token: Token) -> T_MetaVar:
         _range = token2Range(token)
         splited = token.value.split(".")
         name = splited[-1]
         prefix = splited[:-1]
-        return Variable(prefix, name, _range)
+        return cls(prefix, name, _range)
 
-    def __str__(self):
-        prefix = ".".join(self.prefix)
-        return f"{prefix}.{self.name}"
+    @classmethod
+    def compare(cls, other: SST) -> bool:
+        return (
+            isinstance(other, cls)
+            and cls.prefix == other.prefix
+            and cls.name == other.name
+        )
 
-    def __repr__(self):
-        return f"Variable({self.prefix},{self.name},{self._range})"
-
-
-class Operator(Expression):
-    prefix: list[str]
-    name: str
-    _range: Range
-
-    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
-        self.prefix = prefix
-        self.name = name
-        self._range = _range
-
-    @staticmethod
-    def from_lark_token(token: Token) -> "Operator":
-        _range = token2Range(token)
-        splited = token.value.split(".")
-        name = splited[-1]
-        prefix = splited[:-1]
-        return Operator(prefix, name, _range)
-
-    def __str__(self):
-        prefix = ".".join(self.prefix)
-        return f"{prefix}.{self.name}"
-
-    def __repr__(self):
-        return f"Operator({self.prefix},{self.name},{self._range})"
+    @classmethod
+    def __repr__(cls) -> str:
+        return f"{cls.__name__}({cls.prefix},{cls.name},{cls._range})"
 
 
-class ConstructorName(Expression):
-    prefix: list[str]
-    name: str
-    _range: Range
+class Variable(MetaVar):
+    pass
 
-    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
-        self.prefix = prefix
-        # shall we add `assert name[0].isupper()` here?
-        self.name = name
-        self._range = _range
 
-    @staticmethod
-    def from_lark_token(token: Token) -> "ConstructorName":
-        _range = token2Range(token)
-        splited = token.value.split(".")
-        name = splited[-1]
-        prefix = splited[:-1]
-        return ConstructorName(prefix, name, _range)
+class Operator(MetaVar):
+    pass
 
-    def __str__(self):
-        prefix = ".".join(self.prefix)
-        return f"{prefix}.{self.name}"
 
-    def __repr__(self):
-        return f"ConstructorName({self.prefix},{self.name},{self._range})"
+class ConstructorName(MetaVar):
+    pass
 
 
 class RecordUpdate(Expression):
@@ -134,16 +104,24 @@ class RecordUpdate(Expression):
         self._map = _map
         self._range = mergeRanges(_map[-1][1], _map[0][1])
 
-    def __str__(self):
-        return repr(self)
+    def compare(self, other: SST) -> bool:
+        def compare_map_items(
+            item1: tuple[str, Range, ExpressionT],
+            item2: tuple[str, Range, ExpressionT],
+        ) -> bool:
+            return item1[0] == item2[0] and item1[2].compare(item2[2])
+
+        return isinstance(other, RecordUpdate) and compare_list(
+            self._map, other._map, compare_map_items
+        )
 
     def __repr__(self):
         return f"RecordUpdate({self._map})"
 
 
 class Record(Expression):
+    # The Optional represent a expression like {val} instead of {val=val}
     _map: list[tuple[str, Range, Optional[ExpressionT]]]
-    _range: Range
 
     def __init__(
         self, _map: list[tuple[str, Range, Optional[ExpressionT]]]
@@ -151,8 +129,20 @@ class Record(Expression):
         self._map = _map
         self._range = mergeRanges(_map[-1][1], _map[0][1])
 
-    def __str__(self):
-        return repr(self)
+    def compare(self, other: SST) -> bool:
+        def compare_map_items(
+            item1: tuple[str, Range, Optional[ExpressionT]],
+            item2: tuple[str, Range, Optional[ExpressionT]],
+        ) -> bool:
+            if item1[2] is None and item2[2] is None:
+                return item1[0] == item2[0]
+            elif item1[2] is not None and item2[2] is not None:
+                return item1[0] == item2[0] and item1[2].compare(item2[2])
+            return False
+
+        return isinstance(other, Record) and compare_list(
+            self._map, other._map, compare_map_items
+        )
 
     def __repr__(self):
         return f"RecordUpdate({self._map})"
@@ -161,7 +151,6 @@ class Record(Expression):
 class Selector(Expression):
     expression: ExpressionT
     fields: list[str]
-    _range: Range
 
     def __init__(
         self, expression: ExpressionT, fields: list[str], _range: Range
@@ -170,8 +159,12 @@ class Selector(Expression):
         self.fields = fields
         self._range = _range
 
-    def __str__(self):
-        return repr(self)
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Selector)
+            and self.expression.compare(other.expression)
+            and self.fields == other.fields
+        )
 
     def __repr__(self):
         return f"RecordUpdate({self.expression},{self.fields})"
@@ -180,7 +173,6 @@ class Selector(Expression):
 class AnnotatedExpression(Expression):
     expression: ExpressionT
     annotation: TypeT
-    _range: Range
 
     def __init__(
         self,
@@ -191,8 +183,12 @@ class AnnotatedExpression(Expression):
         self.annotation = annotation
         self._range = mergeRanges(expression._range, annotation._range)
 
-    def __str__(self):
-        return repr(self)
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, AnnotatedExpression)
+            and self.expression.compare(other.expression)
+            and self.annotation == other.annotation
+        )
 
     def __repr__(self):
         return f"AnnotatedExpression({self.expression},{self.annotation})"
@@ -200,17 +196,23 @@ class AnnotatedExpression(Expression):
 
 class ExpressionTypeArgument(Expression):
     _type: TypeT
-    _range: Range
 
     def __init__(self, _type: TypeT, _range: Range):
         self._type = _type
         self._range = _range
 
+    def compare(self, other: SST) -> bool:
+        return isinstance(other, ExpressionTypeArgument) and self._type.compare(
+            other
+        )
+
+    def __repr__(self):
+        return f"ExpressionTypeArgument({self._type})"
+
 
 class Application(Expression):
     function: ExpressionT
     argument: ExpressionT
-    _range: Range
 
     def __init__(
         self,
@@ -222,48 +224,64 @@ class Application(Expression):
         self.argument = argument
         self._range = _range
 
-    def pretty(self):
-        if isinstance(self.function, Literal) or isinstance(
-            self.function, Variable
-        ):
-            return f"{self.function.pretty()} {self.argument.pretty()}"
-        else:
-            return f"({self.function.pretty()}) ({self.argument.pretty()})"
-
-    def __str__(self):
-        return self.pretty()
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Application)
+            and self.function.compare(other.function)
+            and self.argument.compare(other.argument)
+        )
 
     def __repr__(self):
         return f"Application({self.function},{self.argument})"
 
 
-class IntercalatedList(Generic[T, T2]):
-    pass
+T1_Intercalated = TypeVar("T1_Intercalated", bound=Expression)
+T2_Intercalated = TypeVar("T2_Intercalated", bound=Expression)
 
 
-class IntercalatedListFist(IntercalatedList[T, T2]):
-    value: T
+class IntercalatedList(Generic[T1_Intercalated, T2_Intercalated]):
+    @abstractmethod
+    def compare(self, other: SST) -> bool:
+        """
+        As in SST, compare two methods
+        """
 
-    def __init__(self, value: T):
+
+class IntercalatedListFist(IntercalatedList[T1_Intercalated, T2_Intercalated]):
+    value: T1_Intercalated
+
+    def __init__(self, value: T1_Intercalated):
         self.value = value
 
-    def __str__(self):
-        return str(self.value)
+    def compare(self, other):
+        return isinstance(other, IntercalatedListFist) and self.value.compare(
+            other.value
+        )
 
     def __repr__(self):
         return f"IntercalatedListFist({self.value})"
 
 
-class IntercalatedListSecond(IntercalatedList[T, T2]):
-    value: T
-    tail: IntercalatedList[T2, T]
+class IntercalatedListSecond(
+    IntercalatedList[T1_Intercalated, T2_Intercalated]
+):
+    value: T1_Intercalated
+    tail: IntercalatedList[T2_Intercalated, T1_Intercalated]
 
-    def __init__(self, value: T, tail: IntercalatedList[T2, T]):
+    def __init__(
+        self,
+        value: T1_Intercalated,
+        tail: IntercalatedList[T2_Intercalated, T1_Intercalated],
+    ):
         self.value = value
         self.tail = tail
 
-    def __str__(self):
-        return f"({self.value},{self.tail})"
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, IntercalatedListSecond)
+            and self.value == other.value
+            and self.tail.compare(other)
+        )
 
     def __repr__(self):
         return f"IntercalatedListSecond({self.value},{self.tail})"
@@ -295,35 +313,32 @@ class OperatorsWithoutMeaning(Expression):
         self.listOfOperatorExpression = listOfOperatorExpression
         self._range = _range
 
-    def __str__(self):
-        def prettify(exp: ExpressionT):
-            if (
-                isinstance(exp, Function)
-                or isinstance(exp, OperatorsWithoutMeaning)
-                or isinstance(exp, Let)
-            ):
-                return f"({exp})"
-            else:
-                return str(exp)
-
-        return f"{self.listOfOperatorExpression}"
+    def compare(self, other: SST) -> bool:
+        return isinstance(
+            other, OperatorsWithoutMeaning
+        ) and self.listOfOperatorExpression.compare(
+            other.listOfOperatorExpression
+        )
 
     def __repr__(self):
         return f"OperatorWithoutMeaning({repr(self.listOfOperatorExpression)})"
 
 
-class CaseCase:
+class CaseCase(Expression):
     pattern: PatternMatchT
     expression: ExpressionT
-    _range: Range
 
     def __init__(self, pattern: PatternMatchT, expression: ExpressionT):
         self.pattern = pattern
         self.expression = expression
         self.range = mergeRanges(pattern._range, expression._range)
 
-    def __str__(self):
-        return f"({str(self.pattern)} -> {str(self.expression)})"
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, CaseCase)
+            and self.pattern.compare(other.pattern)
+            and self.expression.compare(other.expression)
+        )
 
     def __repr__(self):
         return f"CaseCase({repr(self.pattern)},{repr(self.expression)})"
@@ -332,7 +347,6 @@ class CaseCase:
 class Case(Expression):
     expression: ExpressionT
     cases: list[CaseCase]
-    _range: Range
 
     def __init__(
         self, expression: ExpressionT, cases: list[CaseCase], _range: Range
@@ -341,8 +355,12 @@ class Case(Expression):
         self.cases = cases
         self._range = _range
 
-    def __str__(self):
-        return f"case {str(self.expression)} of ({str(self.cases)})"
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Case)
+            and self.expression.compare(other.expression)
+            and compare_list(self.cases, other.cases, CaseCase.compare)
+        )
 
     def __repr__(self):
         return f"Case({repr(self.expression)},{repr(self.cases)})"
@@ -351,7 +369,6 @@ class Case(Expression):
 class Function(Expression):
     patterns: list[PatternMatchT]
     expression: ExpressionT
-    _range: Range
 
     def __init__(
         self,
@@ -363,8 +380,15 @@ class Function(Expression):
         self.expression = expression
         self._range = _range
 
-    def __str__(self):
-        return f"\\ {str(self.patterns)} -> ({str(self.value)})"
+    def compare(self, other: SST) -> bool:
+        def compare_patterns(p1: PatternMatchT, p2: PatternMatchT) -> bool:
+            return p1.compare(p2)
+
+        return (
+            isinstance(other, Function)
+            and self.expression.compare(other.expression)
+            and compare_list(self.patterns, other.patterns, compare_patterns)
+        )
 
     def __repr__(self):
         return f"Function({repr(self.patterns)},{repr(self.value)})"
@@ -373,7 +397,6 @@ class Function(Expression):
 class LetBinding(Expression):
     pattern: PatternMatchT
     expression: ExpressionT
-    _range: Range
 
     def __init__(
         self,
@@ -384,11 +407,15 @@ class LetBinding(Expression):
         self.expression = expression
         self._range = mergeRanges(pattern._range, expression._range)
 
-    def __str__(self):
-        return f"{str(self.name)} = {str(self.expression)}"
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, LetBinding)
+            and self.pattern.compare(other.pattern)
+            and self.expression.compare(other.expression)
+        )
 
     def __repr__(self):
-        return f"Let({repr(self.name)},{repr(self.expression)})"
+        return f"LetBinding({repr(self.pattern)},{repr(self.expression)})"
 
 
 class Let(Expression):
@@ -405,9 +432,12 @@ class Let(Expression):
         self.expression = expression
         self._range = mergeRanges(bindings[0]._range, expression._range)
 
-    def __str__(self):
-        bindings = "".join(f"({str(i)})" for i in self.bindings)
-        return f"let {bindings} in ({str(self.expression)})"
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Let)
+            and self.expression.compare(other.expression)
+            and compare_list(self.bindings, other.bindings, LetBinding.compare)
+        )
 
     def __repr__(self):
         return f"Let({self.bindings},{self.expression})"
