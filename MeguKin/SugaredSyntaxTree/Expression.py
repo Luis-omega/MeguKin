@@ -1,12 +1,18 @@
-from typing import Optional, Set, Union, TypeVar, Generic, Callable
+from typing import Optional, Union, TypeVar, Generic
 from abc import abstractmethod
 
-from lark import Token
-
-from MeguKin.File import Range, token2Range, mergeRanges
+from MeguKin.File import Range, mergeRanges
 from MeguKin.SugaredSyntaxTree.Type import TypeT
-from MeguKin.SugaredSyntaxTree.PatternMatch import PatternMatchT
-from MeguKin.SugaredSyntaxTree.SST import SST, compare_list
+from MeguKin.SugaredSyntaxTree.PatternMatch import (
+    PatternMatchT,
+    compare_patterns,
+)
+from MeguKin.SugaredSyntaxTree.SST import (
+    SST,
+    compare_list,
+    MetaVar,
+    MetaLiteral,
+)
 
 
 T = TypeVar("T")
@@ -28,71 +34,24 @@ ExpressionT = Union[
     "Let",
 ]
 
-# TODO: Add comparision without ranges
-
 
 class Expression(SST):
     pass
 
 
-class Literal(Expression):
-    token: Token
-
-    def __init__(self, token: Token):
-        self.value = token
-        self._range = token2Range(token)
-
-    def compare(self, other: SST) -> bool:
-        if isinstance(other, Literal):
-            return self.token == other.token
-        return False
-
-    def __repr__(self):
-        return f"Literal({self.value})"
-
-
-T_MetaVar = TypeVar("T_MetaVar", bound="MetaVar")
-
-
-class MetaVar(Expression):
-    prefix: list[str]
-    name: str
-
-    def __init__(self, prefix: list[str], name: str, _range: Range) -> None:
-        self.prefix = prefix
-        self.name = name
-        self._range = _range
-
-    @classmethod
-    def from_lark_token(cls: type[T_MetaVar], token: Token) -> T_MetaVar:
-        _range = token2Range(token)
-        splited = token.value.split(".")
-        name = splited[-1]
-        prefix = splited[:-1]
-        return cls(prefix, name, _range)
-
-    @classmethod
-    def compare(cls, other: SST) -> bool:
-        return (
-            isinstance(other, cls)
-            and cls.prefix == other.prefix
-            and cls.name == other.name
-        )
-
-    @classmethod
-    def __repr__(cls) -> str:
-        return f"{cls.__name__}({cls.prefix},{cls.name},{cls._range})"
-
-
-class Variable(MetaVar):
+class Literal(MetaLiteral, Expression):
     pass
 
 
-class Operator(MetaVar):
+class Variable(MetaVar, Expression):
     pass
 
 
-class ConstructorName(MetaVar):
+class Operator(MetaVar, Expression):
+    pass
+
+
+class ConstructorName(MetaVar, Expression):
     pass
 
 
@@ -317,7 +276,10 @@ class OperatorsWithoutMeaning(Expression):
         return isinstance(
             other, OperatorsWithoutMeaning
         ) and self.listOfOperatorExpression.compare(
-            other.listOfOperatorExpression
+            # python alone have erased the types of the list
+            # so, we can't ensure statically that both are
+            # of the same type, raisin a type error here.
+            other.listOfOperatorExpression  # type:ignore
         )
 
     def __repr__(self):
@@ -381,9 +343,6 @@ class Function(Expression):
         self._range = _range
 
     def compare(self, other: SST) -> bool:
-        def compare_patterns(p1: PatternMatchT, p2: PatternMatchT) -> bool:
-            return p1.compare(p2)
-
         return (
             isinstance(other, Function)
             and self.expression.compare(other.expression)

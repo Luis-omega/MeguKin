@@ -39,10 +39,12 @@ class Token(lark.Token):
         return Token(
             token.type,
             token.value,
-            token.start_pos,
-            token.line,
-            token.column,
-            token.end_line,
-            token.end_column,
-            token.end_pos,
-        )  # type:ignore
+            # Lark uses Optional[int] for some reason
+            # I'm tired of mypy signaling it.
+            token.start_pos,  # type:ignore
+            token.line,  # type:ignore
+            token.column,  # type:ignore
+            token.end_line,  # type:ignore
+            token.end_column,  # type:ignore
+            token.end_pos,  # type:ignore
+        )

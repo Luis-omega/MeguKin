@@ -2,9 +2,10 @@ from typing import Optional, TypeVar
 from functools import reduce
 import logging
 
-from lark import Transformer, v_args, Token, Tree
+from lark import Transformer, v_args, Tree
 
 from MeguKin.File import mergeRanges, token2Range, Range
+from MeguKin.Parser.Token import Token
 from MeguKin.SugaredSyntaxTree.Expression import (
     Literal,
     Variable,

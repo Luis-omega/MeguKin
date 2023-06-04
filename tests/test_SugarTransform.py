@@ -6,8 +6,11 @@ import lark
 from pathlib import Path
 
 from MeguKin.Parser.Parser import load_grammar
+from MeguKin.File import token2Range
 from MeguKin.Parser.Token import Token
 from MeguKin.SugaredSyntaxTree.Transform import ToSST
+from MeguKin.SugaredSyntaxTree.SST import SST
+from MeguKin.SugaredSyntaxTree.Expression import Record, Literal
 
 
 def get_parser(symbol: str) -> Callable[[str], lark.ParseTree]:
@@ -17,32 +20,50 @@ def get_parser(symbol: str) -> Callable[[str], lark.ParseTree]:
     return lark_parser.parse
 
 
-T = TypeVar("T")
-
-
 def make_test(
     example: str,
     symbol: str,
-    expected: T,
+    expected: SST,
 ):
     parser = get_parser(symbol)
     parser_result = parser(example)
     print(parser_result.pretty())
-    result: T = ToSST().transform(parser_result)
-    assert expected == result
+    result: SST = ToSST().transform(parser_result)
+    assert expected.compare(result)
 
 
 class TestLet:
     @staticmethod
     def test_record_item_single_same_line():
         symbol = "expression_record"
+        token = Token("", "", 0, 0, 0, 0, 0, 0)
         example = "{a:1}"
-        expected = Tree("expression_let", [])
+        expected = Record(
+            [
+                (
+                    "a",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "1", token)),
+                )
+            ]
+        )
         make_test(example, symbol, expected)
 
-    # @staticmethod
-    # def test_let_sigle_line():
-    #     symbol = "expression_let"
-    #     example = "let b = c in d"
-    #     expected = Tree("expression_let", [])
-    #     make_test(example, symbol, expected)
+    @staticmethod
+    def test_record_item_single_two_lines():
+        symbol = "expression_record"
+        token = Token("", "", 0, 0, 0, 0, 0, 0)
+        example = """
+    {a:
+        1
+       }"""
+        expected = Record(
+            [
+                (
+                    "a",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "1", token)),
+                )
+            ]
+        )
+        make_test(example, symbol, expected)

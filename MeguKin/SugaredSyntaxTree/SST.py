@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TypeVar, Callable
 
-from MeguKin.File import Range
+from MeguKin.File import Range, token2Range
 from MeguKin.SugaredSyntaxTree.Pretty import Document, DocumentData
+from MeguKin.Parser.Token import Token
 
 T = TypeVar("T")
 
@@ -53,6 +54,61 @@ class SST(ABC, SSTDataClass):
         """
         Usual python repr
         """
+
+
+T_MetaVar = TypeVar("T_MetaVar", bound="MetaVar")
+
+
+class MetaVar(SST):
+    prefix: list[str]
+    name: str
+
+    @classmethod
+    def __init__(cls, prefix: list[str], name: str, _range: Range) -> None:
+        cls.prefix = prefix
+        cls.name = name
+        cls._range = _range
+
+    @classmethod
+    def from_lark_token(cls: type[T_MetaVar], token: Token) -> T_MetaVar:
+        _range = token2Range(token)
+        splited = token.value.split(".")
+        name = splited[-1]
+        prefix = splited[:-1]
+        return cls(prefix, name, _range)
+
+    @classmethod
+    def compare(cls, other: SST) -> bool:
+        return (
+            isinstance(other, cls)
+            and cls.prefix == other.prefix
+            and cls.name == other.name
+        )
+
+    @classmethod
+    def __repr__(cls) -> str:
+        return f"{cls.__name__}({cls.prefix},{cls.name},{cls._range})"
+
+
+class LiteralDataClass:
+    token: Token
+
+
+class MetaLiteral(SST, LiteralDataClass):
+    @classmethod
+    def __init__(cls, token: Token):
+        cls.token = token
+        cls._range = token2Range(token)
+
+    @classmethod
+    def compare(cls, other: SST) -> bool:
+        if isinstance(other, cls):
+            return cls.token == other.token
+        return False
+
+    @classmethod
+    def __repr__(cls):
+        return f"{cls.__name__}({cls.token})"
 
 
 def compare_list(
