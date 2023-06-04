@@ -54,7 +54,8 @@ class TestLet:
         symbol = "expression_record"
         token = Token("", "", 0, 0, 0, 0, 0, 0)
         example = """
-    {a:
+    {
+  a:
         1
        }"""
         expected = Record(

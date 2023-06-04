@@ -172,20 +172,24 @@ def make_token_error(token: Token, error: LayoutError):
 def make_context_with_next_token(
     token: Token, context: Context, stream: Stream, stack: ContextStack
 ) -> tuple[bool, list[Token]]:
+    log.debug(f"make_context_with_next_token, token: {repr_token(token)}")
     next_token = stream.peek()
     out = []
     if next_token is None:
+        log.debug("no next token found")
         out.append(token)
         out.append(make_token_error(token, UnexpectedEOF(token, "let")))
         return (True, out)
     else:
+        log.debug(f"next_token: {repr_token(next_token)}")
         if next_token.column > token.column:
             if next_token.line > token.line:
-                out.append(make_layout_start(token, ""))
+                out.append(make_layout_start(next_token, ""))
                 context_item = ContextItem(
                     next_token.column, next_token.line, token, context
                 )
                 stack.append(context_item)
+                log.debug(f"returning out : {out}")
                 return (False, out)
             else:
                 return (False, [])
@@ -279,6 +283,7 @@ def handle_indentation(
                 (has_error, tokens) = make_context_with_next_token(
                     current_token, context, stream, stack
                 )
+                print(repr_token(current_token), tokens)
                 for token in tokens:
                     log.debug(f"insert layout: {repr_token(token)}")
                     yield token

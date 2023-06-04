@@ -29,12 +29,31 @@ def get_lexer() -> Callable[[str], Iterator[lark.Token]]:
 def make_test(example: str, state: Optional[ContextStack], expected: list[str]):
     lexer = get_lexer()
     regular_tokens = list(lexer(example))
-    our_tokens = Stream(map(lambda x: Token.from_lark(x), regular_tokens))
-    new_tokens = list(handle_indentation(state, our_tokens))
-    print(new_tokens)
-    tokens_type = [token.type for token in new_tokens]
-    print(new_tokens[-1].column, new_tokens[-1].line)
+    # before we had a explicit call to inject tokens
+    # but now the load of grammar inmediatly calls it, so
+    # doing it again, would crash the algorithm
+    tokens_type = [token.type for token in regular_tokens]
     assert expected == tokens_type
+
+
+class TestStream:
+    @staticmethod
+    def test_stream():
+        def gen_stream_raw():
+            for i in range(0, 10):
+                yield i
+
+        stream_raw = gen_stream_raw()
+        stream = Stream(stream_raw)
+        first = stream.peek()
+        first_consumed = stream.get_next()
+        assert first == first_consumed
+        second = stream.peek()
+        second2 = stream.peek()
+        assert second == second2
+        second_consumed = stream.get_next()
+        assert second_consumed == second
+        assert second == 1
 
 
 class TestLet:
