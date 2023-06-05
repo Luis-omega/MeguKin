@@ -118,7 +118,7 @@ class MetaTop(SST, Generic[T]):
         cls._range = _range
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.value})"
+        return f"{type(self).__name__}({self.name},{self.value})"
 
 
 class MetaRecord(SST, Generic[T]):

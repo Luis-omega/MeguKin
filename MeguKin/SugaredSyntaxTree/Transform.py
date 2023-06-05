@@ -58,8 +58,6 @@ from MeguKin.SugaredSyntaxTree.SST import (
     IntercalatedListSecond,
 )
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
 T = TypeVar("T")
 
@@ -591,7 +589,7 @@ class ToSST(Transformer):
         return value
 
     # mypy can't find that this is a exahustive pattern match
-    def type_application(*atoms: TypeT) -> TypeT:  # type:ignore
+    def type_application(self, *atoms: TypeT) -> TypeT:  # type:ignore
         match atoms:
             case []:
                 # grammar waranties that this won't happen!
@@ -637,8 +635,11 @@ class ToSST(Transformer):
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                 )
 
-    def type_expression_inner(self, types: list[TypeT]) -> list[TypeT]:
-        return types
+    def type_expression_inner(self, types: list[TypeT]) -> TypeT:
+        out = types[-1]
+        for type_ in types[1:][::-1]:
+            out = TypeArrow(type_, out, mergeRanges(out._range, type_._range))
+        return out
 
     def type_scheme(self, type_expression: TypeT) -> TypeT:
         return type_expression
@@ -702,6 +703,7 @@ class ToSST(Transformer):
         _type: TypeT,
         layout_end: Token,
     ) -> Declaration:
+        print(_type)
         return Declaration(
             name.value, _type, mergeRanges(token2Range(name), _type._range)
         )

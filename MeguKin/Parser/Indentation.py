@@ -36,7 +36,11 @@ from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
 from MeguKin.Error import MeguKinError
 
+import sys
+
 log = logging.getLogger(__name__)
+handler = logging.FileHandler("log")
+log.addHandler(handler)
 log.setLevel(logging.DEBUG)
 
 
@@ -65,12 +69,18 @@ class LayoutClosedByBadToken(MissMatchIndentation):
 
 
 class ContextFirstValueBeforeStart(MissMatchIndentation):
-    def __init__(self, start_token: Token, end_token: Token):
-        self.msg = (
-            "Unexpected indentation for "
-            f"{repr_token(end_token)}, we expected it to be greater than the "
-            f"indentation introduced by {repr_token(start_token)}"
-        )
+    def __init__(self, start_token: Token, end_token: Token, force=False):
+        if force:
+            self.msg = (
+                "Unexpected indentation for "
+                f"{repr_token(end_token)}, we expected it to have indentation"
+            )
+        else:
+            self.msg = (
+                "Unexpected indentation for "
+                f"{repr_token(end_token)}, we expected it to be greater than the "
+                f"indentation introduced by {repr_token(start_token)}"
+            )
 
 
 class LetInMaybeMisplaced(MissMatchIndentation):
@@ -170,7 +180,11 @@ def make_token_error(token: Token, error: LayoutError):
 
 
 def make_context_with_next_token(
-    token: Token, context: Context, stream: Stream, stack: ContextStack
+    token: Token,
+    context: Context,
+    stream: Stream,
+    stack: ContextStack,
+    force=False,
 ) -> tuple[bool, list[Token]]:
     log.debug(f"make_context_with_next_token, token: {repr_token(token)}")
     next_token = stream.peek()
@@ -182,8 +196,12 @@ def make_context_with_next_token(
         return (True, out)
     else:
         log.debug(f"next_token: {repr_token(next_token)}")
-        if next_token.column > token.column:
-            if next_token.line > token.line:
+        if next_token.column > token.column or (
+            force and next_token.column > 1
+        ):
+            if next_token.line > token.line or (
+                force and next_token.column > 1
+            ):
                 out.append(make_layout_start(next_token, ""))
                 context_item = ContextItem(
                     next_token.column, next_token.line, token, context
@@ -196,7 +214,10 @@ def make_context_with_next_token(
         else:
             out.append(
                 make_token_error(
-                    next_token, ContextFirstValueBeforeStart(token, next_token)
+                    next_token,
+                    ContextFirstValueBeforeStart(
+                        token, next_token, force=force
+                    ),
                 )
             )
             return (True, out)
@@ -272,7 +293,7 @@ def handle_indentation(
             in_import = current_token.type == "IMPORT"
 
         match current_token.type:
-            case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "COLON" | "DOUBLE_COLON" | "FORALL":
+            case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "DOUBLE_COLON" | "FORALL":
                 log.debug(
                     "insert original layout token:"
                     f"{repr_token(current_token)}"
@@ -283,12 +304,51 @@ def handle_indentation(
                 (has_error, tokens) = make_context_with_next_token(
                     current_token, context, stream, stack
                 )
-                print(repr_token(current_token), tokens)
                 for token in tokens:
                     log.debug(f"insert layout: {repr_token(token)}")
                     yield token
                 if has_error:
                     return
+
+            case "COLON":
+                match stack:
+                    case [ContextItem(0, 0, _, Context.ROOT)]:
+                        log.debug(f"insert: {repr_token(current_token)}")
+                        yield current_token
+                        (has_error, tokens) = make_context_with_next_token(
+                            current_token,
+                            Context.EQUAL,
+                            stream,
+                            stack,
+                            force=True,
+                        )
+
+                        log.debug(
+                            "insert original layout token:"
+                            f"{repr_token(current_token)}"
+                        )
+                        for token in tokens:
+                            log.debug(f"insert layout: {repr_token(token)}")
+                            yield token
+                        if has_error:
+                            return
+                    case _:
+                        log.debug(
+                            "insert original layout token:"
+                            f"{repr_token(current_token)}"
+                        )
+                        yield current_token
+
+                        context = getattr(Context, current_token.type)
+                        (has_error, tokens) = make_context_with_next_token(
+                            current_token, context, stream, stack
+                        )
+                        for token in tokens:
+                            log.debug(f"insert layout: {repr_token(token)}")
+                            yield token
+                        if has_error:
+                            return
+
             case "RIGHT_ARROW":
                 match stack:
                     case [
@@ -321,7 +381,11 @@ def handle_indentation(
                         yield current_token
                         if not in_import:
                             (has_error, tokens) = make_context_with_next_token(
-                                current_token, Context.EQUAL, stream, stack
+                                current_token,
+                                Context.EQUAL,
+                                stream,
+                                stack,
+                                force=True,
                             )
 
                             log.debug(

@@ -1,38 +1,59 @@
 from typing import Optional, Iterable
 from pathlib import Path
 
-from lark import Lark, Tree, UnexpectedInput, GrammarError
+from lark import (
+    Lark,
+    Tree,
+    UnexpectedInput,
+    GrammarError,
+    UnexpectedCharacters,
+    UnexpectedToken,
+)
 from lark.exceptions import ConfigurationError
 
 from MeguKin.Error import MeguKinError
-from MeguKin.Parser.SegmentFile import (
-    segment_str,
-    FileSegment,
-)
 from MeguKin.Parser.Indentation import Indenter
+from MeguKin.Parser import Indentation
+from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
+from dataclasses import dataclass
 
 
-class LoadGrammarError(MeguKinError):
+class ParserStageError(MeguKinError):
     pass
 
 
-class LarkLoadError(MeguKinError):
+class LoadGrammarError(ParserStageError):
+    pass
+
+
+@dataclass
+class LarkLoadError(ParserStageError):
     msg: str
 
-    def __init__(self, msg: str):
-        self.msg = msg
 
-    def __repr__(self):
-        return f'LarkLoadError("{self.msg}")'
+@dataclass
+class FileLoadError(ParserStageError):
+    info: FileInfo
 
 
-class ParserError(MeguKinError):
+class ParserError(ParserStageError):
     pass
 
 
-class FileLoadError(MeguKinError):
-    pass
+@dataclass
+class LarkParseError(ParserError):
+    text: str
+    exception: UnexpectedInput
+    info: FileInfo
+
+
+@dataclass
+class LayoutError(ParserError):
+    msg: str
+    line: int
+    column: int
+    info: FileInfo
 
 
 def load_grammar(
@@ -66,29 +87,42 @@ def load_grammar(
     return parser
 
 
+def parse_string(
+    lark: Lark, info: FileInfo, text: str
+) -> ParserError | Tree[Token]:
+    try:
+        result = lark.parse(text)
+        return result  # type:ignore
+    except UnexpectedInput as uinput:
+        return build_parser_error_from_lark(uinput, text, info)
+
+
 def parse(
     path: Path, lark: Lark, debug: bool
-) -> FileLoadError | tuple[FileInfo, Iterable[ParserError | Tree]]:
-    lines: list[str]
+) -> FileLoadError | tuple[FileInfo, ParserError | Tree[Token]]:
+    info = FileInfo(path.name, path)
     try:
         with open(path, "r") as file:
-            lines = file.readlines()
+            content = file.read()
+            maybe_tree = parse_string(lark, info, content)
+            return (info, maybe_tree)
     except OSError:
-        return FileLoadError()
-
-    def parse_inner():
-        for segment in segment_str(lines):
-            yield parse_segment(lark, segment)
-
-    return (FileInfo(path.name, path), parse_inner())
+        return FileLoadError(info)
 
 
-def parse_segment(lark: Lark, segment: FileSegment) -> ParserError | Tree:
-    try:
-        return lark.parse(segment.segment)
-    except UnexpectedInput as e:
-        return build_parser_error_from_lark(e)
-
-
-def build_parser_error_from_lark(error: UnexpectedInput) -> ParserError:
-    pass
+def build_parser_error_from_lark(
+    error: UnexpectedInput, text: str, info: FileInfo
+) -> ParserError:
+    if isinstance(error, UnexpectedToken):
+        token = error.token
+        if isinstance(token.value, Indentation.LayoutError):
+            match token.value:
+                case Indentation.UnexpectedEOF(
+                    report_at_token=report_token, msg=msg
+                ):
+                    LayoutError(
+                        msg, report_token.line, report_token.column, info
+                    )
+                case _:
+                    LayoutError(token.value.msg, token.line, token.column, info)
+    return LarkParseError(text, error, info)
