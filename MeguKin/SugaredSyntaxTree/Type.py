@@ -1,17 +1,28 @@
-from typing import Union
+from typing import Union, TypeVar
 from lark import Token
 
 from MeguKin.File import Range, token2Range
 from MeguKin.SugaredSyntaxTree.SST import (
     SST,
     compare_list,
+    MetaRecord,
     MetaVar,
     MetaLiteral,
+    MetaMeaninglessOperatorApplications,
 )
 
 TypeT = Union[
-    "TypeArrow", "TypeApplication", "TypeVariable", "TypeConcreteName"
+    "TypeVariable",
+    "TypeConcreteName",
+    "TypeOperator",
+    "TypeRecord",
+    "TypeMeaninglessOperatorApplications",
+    "TypeApplication",
+    "TypeArrow",
+    "TypeForall",
 ]
+
+T = TypeVar("T")
 
 
 class Type(SST):
@@ -23,6 +34,22 @@ class TypeVariable(MetaVar, Type):
 
 
 class TypeConcreteName(MetaVar, Type):
+    pass
+
+
+class TypeOperator(MetaVar, Type):
+    pass
+
+
+class TypeRecord(MetaRecord[TypeT], Type):
+    @staticmethod
+    def compare_items(item1: TypeT, item2: TypeT):
+        return item1.compare(item2)
+
+
+class TypeMeaninglessOperatorApplications(
+    MetaMeaninglessOperatorApplications[TypeT, TypeOperator], Type
+):
     pass
 
 
@@ -64,3 +91,25 @@ class TypeArrow(Type):
 
     def __repr__(self):
         return f"TypeArrow({self.domain}, {self.codomain})"
+
+
+class TypeForall(Type):
+    args: list[TypeVariable]
+    expression: TypeT
+
+    def __init__(
+        self, args: list[TypeVariable], expression: TypeT, _range: Range
+    ):
+        self.args = args
+        self.expression = expression
+        self._range = _range
+
+    def compare(self, other: SST):
+        return (
+            isinstance(other, TypeForall)
+            and self.expression.compare(other.expression)
+            and compare_list(self.args, other.args, TypeVariable.compare)
+        )
+
+    def __repr__(self):
+        return f"TypeForall({self.args},{self.expression})"

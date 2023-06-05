@@ -32,7 +32,89 @@ def make_test(
     assert expected.compare(result)
 
 
-class TestLet:
+def make_layout_test(example_plain: str, example_layout: str, symbol: str):
+    parser = get_parser(symbol)
+    plain_result = parser(example_plain)
+    plain_ToSST = ToSST().transform(plain_result)
+    layout_result = parser(example_layout)
+    layout_ToSST = ToSST().transform(layout_result)
+    print(plain_ToSST)
+    print(layout_ToSST)
+    assert plain_ToSST.compare(layout_ToSST)
+
+
+class TestRecordLayout:
+    @staticmethod
+    def test_top_level():
+        symbol = "top_variable_definition"
+        plain = "a = {b:1}"
+        # This first { can be missaligned since we don't have a
+        # previous context
+        layout = """
+        a = 
+            {   
+             b 
+              : 
+               1
+            }
+        """
+        make_layout_test(plain, layout, symbol)
+
+    @staticmethod
+    def test_record_single_item():
+        symbol = "expression_record"
+        plain = "{a:1}"
+        # This first { can be missaligned since we don't have a
+        # previous context
+        layout = """
+        {   
+      a 
+        : 
+         1
+        }
+        """
+        make_layout_test(plain, layout, symbol)
+
+    @staticmethod
+    def test_record_two_items():
+        symbol = "expression_record"
+        plain = "{a:1,b:2}"
+        # This first { can be missaligned since we don't have a
+        # previous context
+        layout = """
+        {   
+      a 
+        : 
+         1
+        ,b 
+      :
+        2
+     }
+        """
+        make_layout_test(plain, layout, symbol)
+
+    @staticmethod
+    def test_record_tree_items():
+        symbol = "expression_record"
+        plain = "{a:1,b:2,c:3}"
+        # This first { can be missaligned since we don't have a
+        # previous context
+        layout = """
+        {   
+            a 
+                : 
+                    1
+           ,b 
+              :
+                    2
+            ,c :
+                    3
+        }
+        """
+        make_layout_test(plain, layout, symbol)
+
+
+class TestRecord:
     @staticmethod
     def test_record_item_single_same_line():
         symbol = "expression_record"
@@ -50,13 +132,13 @@ class TestLet:
         make_test(example, symbol, expected)
 
     @staticmethod
-    def test_record_item_single_two_lines():
+    def test_record_item_single_multiple_lines():
         symbol = "expression_record"
         token = Token("", "", 0, 0, 0, 0, 0, 0)
         example = """
     {
-  a:
-        1
+      a :
+         1
        }"""
         expected = Record(
             [
@@ -65,6 +147,37 @@ class TestLet:
                     token2Range(token),
                     Literal(token.new_borrow_pos("INT", "1", token)),
                 )
+            ]
+        )
+        make_test(example, symbol, expected)
+
+    @staticmethod
+    def test_record_multiple_items_same_line():
+        symbol = "expression_record"
+        token = Token("", "", 0, 0, 0, 0, 0, 0)
+        example = """{a:1,b:2,c:3,d:4}"""
+        expected = Record(
+            [
+                (
+                    "a",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "1", token)),
+                ),
+                (
+                    "b",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "2", token)),
+                ),
+                (
+                    "c",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "3", token)),
+                ),
+                (
+                    "d",
+                    token2Range(token),
+                    Literal(token.new_borrow_pos("INT", "4", token)),
+                ),
             ]
         )
         make_test(example, symbol, expected)

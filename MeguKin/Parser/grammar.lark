@@ -143,8 +143,8 @@ expression_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 expression_variable : VARIABLE_IDENTIFIER | PREFIXED_VARIABLE
 
 expression_annotation: expression 
-  | expression COLON type_expression_inner -> expression_annotation_no_layout
-  | expression COLON LAYOUT_START type_expression_inner LAYOUT_END -> expression_annotation_layout
+  | expression COLON type_scheme -> expression_annotation_no_layout
+  | expression COLON LAYOUT_START type_scheme LAYOUT_END -> expression_annotation_layout
 
 
 expression_type_arg : AT type_atom
@@ -238,7 +238,7 @@ data_type_constructors_layout : sep_by1{data_type_constructors,data_pipes_layout
 type_record_item : VARIABLE_IDENTIFIER COLON type_expression_inner
   // this enforces commas to be at the begining of the line, 
   // it's a happy accident :)
-  | VARIABLE_IDENTIFIER COLON LAYOUT_START type_expression_inner LAYOUT_END
+  | VARIABLE_IDENTIFIER COLON LAYOUT_START type_expression_inner LAYOUT_END -> type_record_item_layout
 
 type_record_inner : sep_by1{type_record_item,COMMA}
 
@@ -261,9 +261,10 @@ type_operators : (type_application type_operator)* type_application
 // made RIGHT_ARROW not to gen a layout here
 type_expression_inner: sep_by1{type_operators,RIGHT_ARROW}
 
+// This forces prenex form at syntax level
 type_scheme :  type_expression_inner
-  | FORALL type_data_type_args DOT type_expression_inner
-  | FORALL LAYOUT_START type_data_type_args_layout LAYOUT_END DOT type_expression_inner
+  | FORALL type_data_type_args DOT type_expression_inner -> type_scheme_forall_no_layout
+  | FORALL LAYOUT_START type_data_type_args_layout LAYOUT_END DOT type_expression_inner -> type_scheme_forall_layout
 
 
 type_data_type_args : type_variable+
@@ -305,10 +306,10 @@ module_exports : sep_by1{module_export,COMMA}
 // --------------------- Top  ---------------------
 
 top_variable_declaration: VARIABLE_IDENTIFIER COLON type_scheme
-  |  VARIABLE_IDENTIFIER COLON LAYOUT_START type_scheme LAYOUT_END
+  |  VARIABLE_IDENTIFIER COLON LAYOUT_START type_scheme LAYOUT_END -> top_variable_declaration_layout
 
-top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL expression 
- | (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL LAYOUT_START expression LAYOUT_END
+top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL expression -> top_variable_definition
+  | (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL LAYOUT_START expression LAYOUT_END -> top_variable_definition_layout
 
 top_data_type.2: DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL data_type_constructors
   | DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL LAYOUT_START data_type_constructors_layout LAYOUT_END

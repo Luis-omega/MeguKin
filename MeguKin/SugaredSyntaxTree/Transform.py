@@ -18,16 +18,13 @@ from MeguKin.SugaredSyntaxTree.Expression import (
     Application,
     CaseCase,
     Function,
-    OperatorsWithoutMeaning,
     AnnotatedExpression,
     ExpressionT,
     CaseCase,
     Case,
     LetBinding,
+    ExpressionMeaninglessOperatorApplications,
     Let,
-    IntercalatedList,
-    IntercalatedListFist,
-    IntercalatedListSecond,
 )
 from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchT,
@@ -36,12 +33,29 @@ from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchLiteral,
     PatternMatchConstructorName,
 )
-from MeguKin.SugaredSyntaxTree.Top import TopT, Definition, Declaration
+from MeguKin.SugaredSyntaxTree.Top import (
+    TopT,
+    Definition,
+    Declaration,
+    DataType,
+    ConstructorDefinition,
+)
 from MeguKin.SugaredSyntaxTree.Type import (
     TypeT,
     TypeVariable,
+    TypeOperator,
+    TypeRecord,
+    TypeMeaninglessOperatorApplications,
+    TypeApplication,
     TypeConcreteName,
     TypeArrow,
+    TypeForall,
+)
+
+from MeguKin.SugaredSyntaxTree.SST import (
+    IntercalatedList,
+    IntercalatedListFist,
+    IntercalatedListSecond,
 )
 
 log = logging.getLogger(__name__)
@@ -130,8 +144,6 @@ class ToSST(Transformer):
     def expression_record(
         self, items: list[tuple[str, Range, Optional[ExpressionT]]]
     ) -> Record:
-        log.debug(f"Record: {items}")
-        print(items)
         return Record(items)
 
     def expression_operator(self, operator: Token) -> Operator:
@@ -229,7 +241,7 @@ class ToSST(Transformer):
         match allValues:
             case [value]:
                 return value
-            # Grammar guaranty that we always have a value
+            # Grammar guarantee that we always have a value
             case _:
                 firstValue = allValues[0]
                 acc1: IntercalatedList[
@@ -239,13 +251,15 @@ class ToSST(Transformer):
                 is_operator = True
                 for value in allValues[1:]:
                     if is_operator:
-                        acc2 = IntercalatedListSecond(value, acc1)  # type: ignore
+                        acc2 = IntercalatedListSecond(
+                            value, acc1  # type:ignore
+                        )
                         is_operator = False
                     else:
                         acc1 = IntercalatedListSecond(value, acc2)
                         is_operator = True
 
-                return OperatorsWithoutMeaning(
+                return ExpressionMeaninglessOperatorApplications(
                     acc1,
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                 )
@@ -266,8 +280,9 @@ class ToSST(Transformer):
         return (pattern, expression)
 
     def expression_case_cases(
-        self, *cases: tuple[PatternMatchT, ExpressionT]
+        self, cases: list[tuple[PatternMatchT, ExpressionT]]
     ) -> list[CaseCase]:
+        print("case cases got: ", cases)
         return [CaseCase(case[0], case[1]) for case in cases]
 
     def expression_case_operators(self, expression: ExpressionT) -> ExpressionT:
@@ -407,8 +422,10 @@ class ToSST(Transformer):
             expression,
         )
 
-    def expression_let_inside(self, *bindings: LetBinding) -> list[LetBinding]:
-        return list(bindings)
+    def expression_let_inside(
+        self, bindings: list[LetBinding]
+    ) -> list[LetBinding]:
+        return bindings
 
     def expression_let(
         self,
@@ -460,109 +477,264 @@ class ToSST(Transformer):
     def expression(self, expression_1: ExpressionT) -> ExpressionT:
         return expression_1
 
-    ## ------------------ PatternMatch ------------------
-    # def pattern_match_constructor_identifier(
-    #    self, token: Token
-    # ) -> PatternMatchConstructorName:
-    #    return PatternMatchConstructorName.from_lark_token(token)
+    # TODO: I didn't check PatternMatch as it was woking after refactors
+    # ------------------ PatternMatch ------------------
+    def pattern_match_constructor_identifier(
+        self, token: Token
+    ) -> PatternMatchConstructorName:
+        return PatternMatchConstructorName.from_lark_token(token)
 
-    # def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
-    #    return PatternMatchVariable(token)
+    def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
+        return PatternMatchVariable(token)
 
-    # def pattern_match_literal(self, token: Token) -> PatternMatchLiteral:
-    #    return PatternMatchLiteral(token)
+    def pattern_match_literal(self, token: Token) -> PatternMatchLiteral:
+        return PatternMatchLiteral(token)
 
-    # def pattern_match_atom(self, value: PatternMatchT) -> PatternMatchT:
-    #    return value
+    def pattern_match_atom(self, value: PatternMatchT) -> PatternMatchT:
+        return value
 
-    # def pattern_match_constructor_application(
-    #    self, maybe_constructor: PatternMatchT, *arguments: PatternMatchT
-    # ) -> PatternMatchT:
-    #    arguments_list = list(arguments)
-    #    if len(arguments_list) == 0:
-    #        return maybe_constructor
-    #    else:
-    #        # We can ignore error here thanks to the
-    #        # grammar rule and the list len check
-    #        return PatternMatchConstructor(maybe_constructor, arguments)  # type: ignore
+    def pattern_match_constructor_application(
+        self, maybe_constructor: PatternMatchT, *arguments: PatternMatchT
+    ) -> PatternMatchT:
+        arguments_list = list(arguments)
+        if len(arguments_list) == 0:
+            return maybe_constructor
+        else:
+            # We can ignore error here thanks to the
+            # grammar rule and the list len check
+            return PatternMatchConstructor(maybe_constructor, arguments)  # type: ignore
 
-    # def pattern_match(self, pattern: PatternMatchT) -> PatternMatchT:
-    #    return pattern
+    def pattern_match(self, pattern: PatternMatchT) -> PatternMatchT:
+        return pattern
 
-    # def pattern_match_function_args_atoms(
-    #    self, *atoms: PatternMatchT
-    # ) -> list[PatternMatchT]:
-    #    return list(atoms)
+    def pattern_match_function_args_atoms(
+        self, *atoms: PatternMatchT
+    ) -> list[PatternMatchT]:
+        return list(atoms)
 
-    # def pattern_match_function_args_comes(
-    #    self, *mixedList: PatternMatchT | Token
-    # ) -> list[PatternMatchT]:
-    #    out: list[PatternMatchT] = []
-    #    for maybe_pattern in mixedList:
-    #        if not isinstance(maybe_pattern, Token):
-    #            out.append(maybe_pattern)
-    #    return out
+    def pattern_match_function_args_comes(
+        self, *mixedList: PatternMatchT | Token
+    ) -> list[PatternMatchT]:
+        out: list[PatternMatchT] = []
+        for maybe_pattern in mixedList:
+            if not isinstance(maybe_pattern, Token):
+                out.append(maybe_pattern)
+        return out
 
-    # def pattern_match_function_args(
-    #    self, twoCases: list[PatternMatchT]
-    # ) -> list[PatternMatchT]:
-    #    return twoCases
+    def pattern_match_function_args(
+        self, twoCases: list[PatternMatchT]
+    ) -> list[PatternMatchT]:
+        return twoCases
 
-    ## ------------------ Data ------------------
+    # ------------------ Data ------------------
 
-    ## CONTINUE HERE __________________________________________________________________________
+    def data_type_constructor(
+        self, name: Token, types: Optional[list[TypeT]]
+    ) -> ConstructorDefinition:
+        realTypes: list[TypeT]
+        if types is None:
+            realTypes = []
+        else:
+            realTypes = types
+        acc = token2Range(name)
+        for i in realTypes:
+            acc = mergeRanges(acc, i._range)
+        return ConstructorDefinition(name.value, realTypes, acc)
 
-    # def data_type_constructor(self, name: Token, *types: TypeT) -> Constructor:
-    #    realTypes: list[TypeT]
-    #    if types is None:
-    #        realTypes = []
-    #    else:
-    #        realTypes = types
-    #    acc = token2Range(name)
-    #    for i in realTypes:
-    #        acc = mergeRanges(acc, i._range)
-    #    return Constructor(name.value, realTypes, acc)
+    def data_type_constructors(
+        self, sep: list[ConstructorDefinition]
+    ) -> list[ConstructorDefinition]:
+        return sep
 
-    # def data_type_constructors(
-    #    self, sep: list[Constructor]
-    # ) -> list[Constructor]:
-    #    return sep
+    def data_type_constructors_layout(
+        self, constructors: list[ConstructorDefinition]
+    ) -> list[ConstructorDefinition]:
+        return constructors
 
-    ## ------------------ Types ------------------
-    # def type_atom(self, value: Token | TypeT) -> TypeT:
-    #    if isinstance(value, Token):
-    #        return TypeName(value.value, token2Range(value))
-    #    else:
-    #        return value
+    # ------------------ Types ------------------
 
-    # def type_expression(self, value: list[TypeT]) -> TypeT:
-    #    value = value[::-1]
-    #    firstValue = value[0]
-    #    if len(value) == 1:
-    #        return firstValue
-    #    else:
-    #        out = firstValue
-    #        for domaint in value[1:]:
-    #            _range = mergeRanges(out._range, domaint._range)
-    #            out = TypeArrow(domaint, out, _range)
-    #        return out
+    def type_record_item(
+        self, variable: Token, colon: Token, type_expression_inner: TypeT
+    ) -> tuple[Token, TypeT]:
+        return (variable, type_expression_inner)
+
+    def type_record_item_layout(
+        self,
+        variable: Token,
+        colon: Token,
+        layout_start: Token,
+        type_expression_inner: TypeT,
+        layout_end: Token,
+    ) -> tuple[Token, TypeT]:
+        return (variable, type_expression_inner)
+
+    def type_record_inner(
+        items: list[tuple[Token, TypeT]]
+    ) -> list[tuple[Token, TypeT]]:
+        return items
+
+    def type_record(self, items: list[tuple[Token, TypeT]]) -> TypeRecord:
+        return TypeRecord(
+            [(token.value, token2Range(token), type_) for token, type_ in items]
+        )
+
+    def type_operator(self, operator: Token) -> TypeOperator:
+        return TypeOperator.from_lark_token(operator)
+
+    def type_variable(self, variable: Token) -> TypeVariable:
+        return TypeVariable.from_lark_token(variable)
+
+    def type_concrete_type(self, token: Token) -> TypeConcreteName:
+        return TypeConcreteName.from_lark_token(token)
+
+    def type_atom(self, value: TypeT) -> TypeT:
+        return value
+
+    # mypy can't find that this is a exahustive pattern match
+    def type_application(*atoms: TypeT) -> TypeT:  # type:ignore
+        match atoms:
+            case []:
+                # grammar waranties that this won't happen!
+                raise Exception(missing_case_exception_message)
+            case [atom1]:
+                return atom1
+            case [atom1, atom2, *remain]:
+                acc = TypeApplication(
+                    atom1, atom2, mergeRanges(atom1._range, atom2._range)
+                )
+                for newItem in remain:
+                    acc = TypeApplication(
+                        acc, newItem, mergeRanges(acc._range, newItem._range)
+                    )
+                return acc
+
+    def type_operators(self, *allValues: TypeT | TypeOperator) -> TypeT:
+        match allValues:
+            case [value]:
+                return value
+            # Grammar guarantee that we always have a value
+            case _:
+                firstValue: TypeT = allValues[0]  # type:ignore
+                acc1: IntercalatedList[
+                    TypeT, TypeOperator
+                ] = IntercalatedListFist(firstValue)
+                acc2: IntercalatedList[Operator, TypeT]
+                is_operator = True
+                for value in allValues[1:]:
+                    if is_operator:
+                        acc2 = IntercalatedListSecond(
+                            value, acc1  # type:ignore
+                        )
+                        is_operator = False
+                    else:
+                        acc1 = IntercalatedListSecond(
+                            value, acc2  # type:ignore
+                        )
+                        is_operator = True
+
+                return ExpressionMeaninglessOperatorApplications(
+                    acc1,  # type:ignore
+                    mergeRanges(allValues[0]._range, allValues[-1]._range),
+                )
+
+    def type_expression_inner(self, types: list[TypeT]) -> list[TypeT]:
+        return types
+
+    def type_scheme(self, type_expression: TypeT) -> TypeT:
+        return type_expression
+
+    def type_scheme_forall_no_layout(
+        self,
+        forall: Token,
+        args: list[TypeVariable],
+        dot: Token,
+        expression: TypeT,
+    ) -> TypeT:
+        return TypeForall(
+            args,
+            expression,
+            mergeRanges(token2Range(forall), expression._range),
+        )
+
+    def type_scheme_forall_layout(
+        self,
+        forall: Token,
+        layout_start: Token,
+        args: list[TypeVariable],
+        layout_end: Token,
+        dot: Token,
+        expression: TypeT,
+    ) -> TypeT:
+        return TypeForall(
+            args,
+            expression,
+            mergeRanges(token2Range(forall), expression._range),
+        )
+
+    def type_data_type_args(
+        self, *variables: TypeVariable
+    ) -> list[TypeVariable]:
+        return list(variables)
+
+    def type_data_type_args_layout(
+        self, *variables: TypeVariable | Token
+    ) -> list[TypeVariable]:
+        return [
+            maybe_var
+            for maybe_var in variables
+            if isinstance(maybe_var, TypeVariable)
+        ]
 
     ## ------------------ Top ------------------
-    # def top_variable_declaration(
-    #    self, name: Token, colon, _type: TypeT
-    # ) -> Declaration:
-    #    return Declaration(
-    #        name.value, _type, mergeRanges(token2Range(name), _type._range)
-    #    )
 
-    # def top_variable_definition(
-    #    self, name: Token, colon, expression: ExpressionT
-    # ) -> Definition:
-    #    return Definition(
-    #        name.value,
-    #        expression,
-    #        mergeRanges(token2Range(name), expression._range),
-    #    )
+    def top_variable_declaration(
+        self, name: Token, colon: Token, _type: TypeT
+    ) -> Declaration:
+        return Declaration(
+            name.value, _type, mergeRanges(token2Range(name), _type._range)
+        )
+
+    def top_variable_declaration_layout(
+        self,
+        name: Token,
+        colon: Token,
+        layout_start: Token,
+        _type: TypeT,
+        layout_end: Token,
+    ) -> Declaration:
+        return Declaration(
+            name.value, _type, mergeRanges(token2Range(name), _type._range)
+        )
+
+    def top_variable_definition(
+        self,
+        name: Token,
+        pattern: Optional[list[PatternMatchT]],
+        equal: Token,
+        expression: ExpressionT,
+    ) -> Definition:
+        _range = mergeRanges(token2Range(name), expression._range)
+        if pattern is None:
+            return Definition(name.value, expression, _range)
+        return Definition(
+            name.value, Function(pattern, expression, _range), _range
+        )
+
+    def top_variable_definition_layout(
+        self,
+        name: Token,
+        pattern: Optional[list[PatternMatchT]],
+        equal: Token,
+        layout_start: Token,
+        expression: ExpressionT,
+        layout_end: Token,
+    ) -> Definition:
+        _range = mergeRanges(token2Range(name), expression._range)
+        if pattern is None:
+            return Definition(name.value, expression, _range)
+        return Definition(
+            name.value, Function(pattern, expression, _range), _range
+        )
 
     # def top_data_type(
     #    self, data: Token, typeName: Token, eq, constructors: list[Constructor]
@@ -580,4 +752,5 @@ class ToSST(Transformer):
 
 
 def tree2sugared(trees: list[Tree]) -> list[TopT]:
-    pass
+    toSST = ToSST()
+    return [toSST.transform(tree) for tree in trees]

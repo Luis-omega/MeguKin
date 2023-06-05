@@ -64,11 +64,11 @@ class LayoutClosedByBadToken(MissMatchIndentation):
         )
 
 
-class LetFirstValueBeforeLet(MissMatchIndentation):
+class ContextFirstValueBeforeStart(MissMatchIndentation):
     def __init__(self, start_token: Token, end_token: Token):
         self.msg = (
             "Unexpected indentation for "
-            f"{repr_token(end_token)}, we expected it to be lower than the "
+            f"{repr_token(end_token)}, we expected it to be greater than the "
             f"indentation introduced by {repr_token(start_token)}"
         )
 
@@ -196,7 +196,7 @@ def make_context_with_next_token(
         else:
             out.append(
                 make_token_error(
-                    next_token, LetFirstValueBeforeLet(token, next_token)
+                    next_token, ContextFirstValueBeforeStart(token, next_token)
                 )
             )
             return (True, out)

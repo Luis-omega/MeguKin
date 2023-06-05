@@ -1,88 +1,56 @@
 from typing import Union
 
-
 from MeguKin.File import Range
-from MeguKin.SugaredSyntaxTree.Expression import ExpressionT
+from MeguKin.SugaredSyntaxTree.Expression import Function, ExpressionT
 from MeguKin.SugaredSyntaxTree.Type import TypeT
+from MeguKin.SugaredSyntaxTree.SST import SST, MetaTop, compare_list
 
 TopT = Union["Definition", "Declaration", "DataType", "Import", "Export"]
 
 
-class Top:
+class Top(SST):
     pass
 
 
-class Definition(Top):
-    name: str
-    expression: ExpressionT
-    _range: Range
-
-    def __init__(self, name: str, expression: ExpressionT, _range: Range):
-        self.name = name
-        self.expression = expression
-        self._range = _range
-
-    def __str__(self):
-        return f"Definition({self.name},{self.expression})"
-
-    def __repr__(self):
-        return f"Definition({self.name},{self.expression})"
+class Definition(MetaTop[ExpressionT], Top):
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Definition)
+            and self.name == other.name
+            and self.value.compare(other.value)
+        )
 
 
-class Declaration(Top):
-    name: str
-    _type: TypeT
-    _range: Range
-
-    def __init__(self, name: str, _type: TypeT, _range: Range):
-        self.name = name
-        self._type = _type
-        self._range = _range
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return f"Declaration({self.name},{self._type})"
+class Declaration(MetaTop[TypeT], Top):
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, Declaration)
+            and self.name == other.name
+            and self.value.compare(other.value)
+        )
 
 
-class ConstructorDefinition:
-    name: str
-    types: list[TypeT]
-    _range: Range
+class ConstructorDefinition(MetaTop[list[TypeT]]):
+    def compare(self, other: SST) -> bool:
+        def compare_types(t1: TypeT, t2: TypeT):
+            return t1.compare(t2)
 
-    def __init__(self, name: str, types: list[TypeT], _range: Range):
-        self.name = name
-        self.types = types
-        self._range = _range
-
-    def __str__(self):
-        return f"ConstructorDefinition({self.name},{self.types})"
-
-    def __repr__(self):
-        return f"ConstructorDefinition({self.name},{self.types})"
+        return (
+            isinstance(other, ConstructorDefinition)
+            and self.name == other.name
+            and compare_list(self.value, other.value, compare_types)
+        )
 
 
-class DataType:
-    name: str
-    constructors: list[ConstructorDefinition]
-    _range: Range
-
-    def __init__(
-        self,
-        name: str,
-        constructors: list[ConstructorDefinition],
-        _range: Range,
-    ):
-        self.name = name
-        self.constructors = constructors
-        self._range = _range
-
-    def __str__(self):
-        return f"DataType({self.name},{self.constructors})"
-
-    def __repr__(self):
-        return f"DataType({self.name},{self.constructors})"
+class DataType(MetaTop[list[ConstructorDefinition]]):
+    def compare(self, other: SST) -> bool:
+        return (
+            isinstance(other, DataType)
+            and self.name == other.name
+            and compare_list(
+                self.value, other.value, ConstructorDefinition.compare
+            )
+        )
 
 
 class Import:
