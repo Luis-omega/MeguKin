@@ -6,7 +6,7 @@ from lark.exceptions import ConfigurationError
 
 from MeguKin.Error import MeguKinError
 from MeguKin.Parser.SegmentFile import (
-    segment_file,
+    segment_str,
     FileSegment,
 )
 from MeguKin.Parser.Indentation import Indenter
@@ -77,7 +77,7 @@ def parse(
         return FileLoadError()
 
     def parse_inner():
-        for segment in segment_file(lines):
+        for segment in segment_str(lines):
             yield parse_segment(lark, segment)
 
     return (FileInfo(path.name, path), parse_inner())
