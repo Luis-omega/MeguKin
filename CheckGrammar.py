@@ -1,5 +1,6 @@
 from lark import Lark
 
+from pprint import pprint
 from MeguKin.Parser.Parser import parse_string
 from MeguKin.Parser import Parser
 from MeguKin.Parser.Parser import load_grammar
@@ -29,7 +30,7 @@ def process(lark: Lark, to_parse: str):
     else:
         print(result.pretty())
         tranformed = ToSST().transform(result)
-        print(tranformed)
+        pprint(tranformed.pretty())
     return result
 
 
