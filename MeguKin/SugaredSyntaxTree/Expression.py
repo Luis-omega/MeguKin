@@ -263,7 +263,6 @@ class CaseCase(Expression):
     def __init__(self, pattern: PatternMatchT, expression: ExpressionT):
         self.pattern = pattern
         self.expression = expression
-        print("CaseCase has : ", pattern, expression)
         self._range = mergeRanges(pattern._range, expression._range)
 
     def compare(self, other: SST) -> bool:
@@ -308,8 +307,9 @@ class Case(Expression):
             new_doc = case.to_document(settings)
             doc = new_doc + LineBreak() + doc
         return (
-            Text("case ")
+            Text("case")
             + indent(self.expression.to_document(settings))
+            + LineBreak()
             + Text("of")
             + indent(doc)
         )
