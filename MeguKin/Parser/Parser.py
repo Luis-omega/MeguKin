@@ -120,9 +120,11 @@ def build_parser_error_from_lark(
                 case Indentation.UnexpectedEOF(
                     report_at_token=report_token, msg=msg
                 ):
-                    LayoutError(
+                    return LayoutError(
                         msg, report_token.line, report_token.column, info
                     )
                 case _:
-                    LayoutError(token.value.msg, token.line, token.column, info)
+                    return LayoutError(
+                        token.value.msg, token.line, token.column, info
+                    )
     return LarkParseError(text, error, info)

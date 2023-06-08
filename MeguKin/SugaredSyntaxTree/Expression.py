@@ -1,5 +1,4 @@
-from typing import Optional, Union, TypeVar, Generic
-from abc import abstractmethod
+from typing import Optional, Union, TypeVar
 
 from MeguKin.File import Range, mergeRanges
 from MeguKin.SugaredSyntaxTree.Type import TypeT
@@ -14,6 +13,19 @@ from MeguKin.SugaredSyntaxTree.SST import (
     MetaLiteral,
     MetaRecord,
     MetaMeaninglessOperatorApplications,
+)
+from MeguKin.Pretty import (
+    Text,
+    DocumentT,
+    Group,
+    LineBreak,
+    NoSpaceLineBreak,
+    parens,
+    Nil,
+    DocumentSettings,
+    AlwaysLineBreak,
+    maybe_indent,
+    indent,
 )
 
 
@@ -53,6 +65,13 @@ class Operator(MetaVar, Expression):
     pass
 
 
+class PrefixOperator(MetaVar, Expression):
+    def to_document(self, settings: DocumentSettings) -> Text:
+        all_ = self.prefix.copy()
+        all_.append(self.name)
+        return parens(settings, Text(".".join(all_)))
+
+
 class ConstructorName(MetaVar, Expression):
     pass
 
@@ -65,6 +84,9 @@ class RecordUpdate(MetaRecord[ExpressionT], Expression):
     ) -> bool:
         return item1.compare(item2)
 
+    def item_to_document(self, settings: DocumentSettings, item: ExpressionT):
+        return Text("=") + Group(expression_parens(settings, item))
+
 
 class Record(MetaRecord[Optional[ExpressionT]], Expression):
     # The Optional represent a expression like {val} instead of {val=val}
@@ -76,6 +98,14 @@ class Record(MetaRecord[Optional[ExpressionT]], Expression):
         return (item1 is None and item2 is None) or (
             item1 is not None and item2 is not None and item1.compare(item2)
         )
+
+    def item_to_document(
+        self, settings: DocumentSettings, item: Optional[ExpressionT]
+    ):
+        if item is None:
+            return Nil()
+        else:
+            return Text(":") + Group(expression_parens(settings, item))
 
 
 class Selector(Expression):
@@ -94,6 +124,15 @@ class Selector(Expression):
             isinstance(other, Selector)
             and self.expression.compare(other.expression)
             and self.fields == other.fields
+        )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        return (
+            Group(
+                parens(settings, expression_parens(settings, self.expression))
+            )
+            + Text(".")
+            + Text(".".join(self.fields))
         )
 
     def __repr__(self):
@@ -120,6 +159,13 @@ class AnnotatedExpression(Expression):
             and self.annotation == other.annotation
         )
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        return (
+            parens(settings, self.expression.to_document(settings))
+            + Text(":")
+            + self.annotation.to_document(settings)
+        )
+
     def __repr__(self):
         return f"AnnotatedExpression({self.expression},{self.annotation})"
 
@@ -135,6 +181,9 @@ class ExpressionTypeArgument(Expression):
         return isinstance(other, ExpressionTypeArgument) and self._type.compare(
             other
         )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        return Text("@") + parens(settings, self._type.to_document(settings))
 
     def __repr__(self):
         return f"ExpressionTypeArgument({self._type})"
@@ -161,6 +210,30 @@ class Application(Expression):
             and self.argument.compare(other.argument)
         )
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        # We need to take care of the case that we have an application
+        # to other application like `f (g x)` we don't want to
+        # print `f g x`
+        if need_parentheses(self.argument):
+            return expression_parens(
+                settings, self.function
+            ) + expression_parens(settings, self.argument)
+        else:
+            match self.argument:
+                case Application():
+                    arg = parens(settings, self.argument.to_document(settings))
+                    return (
+                        expression_parens(settings, self.function)
+                        + Text(" ")
+                        + arg
+                    )
+                case _:
+                    return (
+                        expression_parens(settings, self.function)
+                        + Text(" ")
+                        + self.argument.to_document(settings)
+                    )
+
     def __repr__(self):
         return f"Application({self.function},{self.argument})"
 
@@ -168,7 +241,19 @@ class Application(Expression):
 class ExpressionMeaninglessOperatorApplications(
     MetaMeaninglessOperatorApplications[ExpressionT, Operator], Expression
 ):
-    pass
+    def to_document(self, settings: DocumentSettings):
+        doc: DocumentT = Nil()
+        new_doc: DocumentT
+        for item in self.applications[::-1]:
+            if isinstance(item, Operator):
+                new_doc = (
+                    LineBreak() + item.to_document(settings) + Text(" ") + doc
+                )
+                doc = Group(new_doc)
+            else:
+                new_doc = expression_parens(settings, item)
+                doc = new_doc + doc
+        return doc
 
 
 class CaseCase(Expression):
@@ -186,6 +271,13 @@ class CaseCase(Expression):
             isinstance(other, CaseCase)
             and self.pattern.compare(other.pattern)
             and self.expression.compare(other.expression)
+        )
+
+    def to_document(self, settings: DocumentSettings):
+        return (
+            self.pattern.to_document(settings)
+            + Text(" -> ")
+            + maybe_indent(self.expression.to_document(settings))
         )
 
     def __repr__(self):
@@ -208,6 +300,18 @@ class Case(Expression):
             isinstance(other, Case)
             and self.expression.compare(other.expression)
             and compare_list(self.cases, other.cases, CaseCase.compare)
+        )
+
+    def to_document(self, settings: DocumentSettings):
+        doc: DocumentT = Nil()
+        for case in self.cases[::-1]:
+            new_doc = case.to_document(settings)
+            doc = new_doc + LineBreak() + doc
+        return (
+            Text("case ")
+            + indent(self.expression.to_document(settings))
+            + Text("of")
+            + indent(doc)
         )
 
     def __repr__(self):
@@ -235,6 +339,20 @@ class Function(Expression):
             and compare_list(self.patterns, other.patterns, compare_patterns)
         )
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for pattern in self.patterns[::-1]:
+            new_doc = pattern.to_document(settings)
+            doc = new_doc + LineBreak() + doc
+        return (
+            Text("\\ ")
+            + NoSpaceLineBreak()
+            + maybe_indent(doc)
+            + LineBreak()
+            + Text("->")
+            + maybe_indent(self.expression.to_document(settings))
+        )
+
     def __repr__(self):
         return f"Function({repr(self.patterns)},{repr(self.expression)})"
 
@@ -257,6 +375,14 @@ class LetBinding(Expression):
             isinstance(other, LetBinding)
             and self.pattern.compare(other.pattern)
             and self.expression.compare(other.expression)
+        )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        return (
+            self.pattern.to_document(settings)
+            + Text(" =")
+            + LineBreak()
+            + self.expression.to_document(settings)
         )
 
     def __repr__(self):
@@ -284,5 +410,45 @@ class Let(Expression):
             and compare_list(self.bindings, other.bindings, LetBinding.compare)
         )
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for binding in self.bindings[::-1]:
+            new_doc = binding.to_document(settings)
+            doc = new_doc + AlwaysLineBreak() + doc
+        out = (
+            Text("let ")
+            + NoSpaceLineBreak()
+            + indent(doc)
+            + LineBreak()
+            + Text("in")
+            + LineBreak()
+            + indent(self.expression.to_document(settings))
+        )
+        return out
+
     def __repr__(self):
         return f"Let({self.bindings},{self.expression})"
+
+
+def expression_parens(
+    settings: DocumentSettings, exp: ExpressionT
+) -> DocumentT:
+    if need_parentheses(exp):
+        return parens(settings, exp.to_document(settings))
+    else:
+        return exp.to_document(settings)
+
+
+def need_parentheses(exp: ExpressionT) -> bool:
+    match exp:
+        # TODO: TypeArgument can wo without parents
+        case (
+            Function()
+            | Case()
+            | AnnotatedExpression()
+            | ExpressionMeaninglessOperatorApplications()
+            | Let()
+        ):
+            return True
+        case _:
+            return False

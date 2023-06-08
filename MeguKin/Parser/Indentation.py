@@ -41,7 +41,7 @@ import sys
 log = logging.getLogger(__name__)
 handler = logging.FileHandler("log")
 log.addHandler(handler)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 
 def repr_token(token: Token):

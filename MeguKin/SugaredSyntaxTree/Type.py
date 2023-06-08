@@ -1,14 +1,22 @@
 from typing import Union, TypeVar
-from lark import Token
-
-from MeguKin.File import Range, token2Range
+from MeguKin.File import Range
 from MeguKin.SugaredSyntaxTree.SST import (
     SST,
     compare_list,
     MetaRecord,
     MetaVar,
-    MetaLiteral,
     MetaMeaninglessOperatorApplications,
+)
+
+from MeguKin.Pretty import (
+    Text,
+    DocumentT,
+    Group,
+    LineBreak,
+    parens,
+    Nil,
+    DocumentSettings,
+    maybe_indent,
 )
 
 TypeT = Union[
@@ -46,18 +54,31 @@ class TypeRecord(MetaRecord[TypeT], Type):
     def compare_items(item1: TypeT, item2: TypeT):
         return item1.compare(item2)
 
+    def item_to_document(self, settings: DocumentSettings, item: TypeT):
+        return Text(":") + maybe_indent(item.to_document(settings))
+
 
 class TypeMeaninglessOperatorApplications(
     MetaMeaninglessOperatorApplications[TypeT, TypeOperator], Type
 ):
-    pass
+    def to_document(self, settings: DocumentSettings):
+        doc: DocumentT = Nil()
+        new_doc: DocumentT
+        for item in self.applications[::-1]:
+            if isinstance(item, TypeOperator):
+                new_doc = LineBreak() + item.to_document(settings) + Text(" ")
+                doc = Group(new_doc)
+            else:
+                new_doc = item.to_document(settings)
+                doc = new_doc + doc
+        return doc
 
 
 class TypeApplication(Type):
-    function: Type
-    argument: Type
+    function: TypeT
+    argument: TypeT
 
-    def __init__(self, function: Type, argument: Type, _range: Range):
+    def __init__(self, function: TypeT, argument: TypeT, _range: Range):
         self.function = function
         self.argument = argument
         self._range = _range
@@ -68,6 +89,21 @@ class TypeApplication(Type):
             and self.function.compare(other.function)
             and self.argument.compare(other.argument)
         )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        # We need to take care of the case that we have an application
+        # to other application like `f (g x)` we don't want to
+        # print `f g x`
+        match self.argument:
+            case TypeApplication():
+                arg = parens(settings, self.argument.to_document(settings))
+                return self.function.to_document(settings) + Text(" ") + arg
+            case _:
+                return (
+                    self.function.to_document(settings)
+                    + Text(" ")
+                    + self.argument.to_document(settings)
+                )
 
     def __repr__(self):
         return f"TypeApplication({self.function},{self.argument})"
@@ -89,6 +125,23 @@ class TypeArrow(Type):
             and self.codomain.compare(other.codomain)
         )
 
+    def to_document(self, settings: DocumentSettings):
+        match self.domain:
+            case TypeArrow():
+                return (
+                    parens(settings, self.domain.to_document(settings))
+                    + LineBreak()
+                    + "-> "
+                    + self.codomain.to_document(settings)
+                )
+            case _:
+                return (
+                    self.domain.to_document(settings)
+                    + LineBreak()
+                    + Text("-> ")
+                    + self.codomain.to_document(settings)
+                )
+
     def __repr__(self):
         return f"TypeArrow({self.domain}, {self.codomain})"
 
@@ -109,6 +162,19 @@ class TypeForall(Type):
             isinstance(other, TypeForall)
             and self.expression.compare(other.expression)
             and compare_list(self.args, other.args, TypeVariable.compare)
+        )
+
+    def to_document(self, settings: DocumentSettings):
+        doc: DocumentT = Nil()
+        for arg in self.args[::-1]:
+            new_doc = arg.to_document(settings)
+            doc = new_doc + LineBreak() + doc
+        return Text("forall") + maybe_indent(
+            Group(doc)
+            + LineBreak()
+            + Text(".")
+            + LineBreak()
+            + self.expression.to_document(settings)
         )
 
     def __repr__(self):

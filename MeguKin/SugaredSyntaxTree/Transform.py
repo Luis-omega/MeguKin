@@ -25,6 +25,7 @@ from MeguKin.SugaredSyntaxTree.Expression import (
     LetBinding,
     ExpressionMeaninglessOperatorApplications,
     Let,
+    PrefixOperator,
 )
 from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchT,
@@ -52,10 +53,23 @@ from MeguKin.SugaredSyntaxTree.Type import (
     TypeForall,
 )
 
-from MeguKin.SugaredSyntaxTree.SST import (
-    IntercalatedList,
-    IntercalatedListFist,
-    IntercalatedListSecond,
+
+from MeguKin.SugaredSyntaxTree.Module import (
+    ImportConstructorName,
+    ImportTypeName,
+    ImportType,
+    ImportFunction,
+    ImportOperator,
+    ImportModuleName,
+    ImportModule,
+    ExportConstructorName,
+    ExportTypeName,
+    ExportType,
+    ExportFunction,
+    ExportOperator,
+    ExportModuleName,
+    ImportNameT,
+    ExportNameT,
 )
 
 
@@ -104,7 +118,7 @@ class ToSST(Transformer):
     ) -> tuple[str, Range, ExpressionT]:
         return (variable.value, token2Range(variable), expression)
 
-    def exppression_record_update_inner(
+    def expression_record_update_inner(
         self, results: list[tuple[str, Range, ExpressionT]]
     ) -> list[tuple[str, Range, ExpressionT]]:
         return results
@@ -160,6 +174,9 @@ class ToSST(Transformer):
             case _:
                 raise ToASTException(missing_case_exception_message)
 
+    def expression_operator_parens(self, operator: Operator) -> PrefixOperator:
+        return PrefixOperator(operator.prefix, operator.name, operator._range)
+
     def expression_constructor(self, identifier: Token) -> ConstructorName:
         match identifier.type:
             case "CAPITALIZED_IDENTIFIER":
@@ -199,18 +216,18 @@ class ToSST(Transformer):
     ) -> AnnotatedExpression:
         return AnnotatedExpression(expression, type_expression)
 
-    def type_arg(self, at, _type: TypeT) -> ExpressionTypeArgument:
-        return ExpressionTypeArgument(
-            # We want the full @Type to be signaled on error
-            _type,
-            mergeRanges(token2Range(at), _type._range),
-        )
-
     def expression_literal(self, tok: Token) -> Literal:
         return Literal(tok)
 
     def expression_atom(self, atom: ExpressionT) -> ExpressionT:
         return atom
+
+    def expression_type_arg(self, at, _type: TypeT) -> ExpressionTypeArgument:
+        return ExpressionTypeArgument(
+            # We want the full @Type to be signaled on error
+            _type,
+            mergeRanges(token2Range(at), _type._range),
+        )
 
     def expression_selector(
         self, atom: ExpressionT, *remain: Token
@@ -219,11 +236,11 @@ class ToSST(Transformer):
             return atom
         else:
             _range = mergeRanges(atom._range, token2Range(remain[-1]))
-            fields = [i.value for i in remain[::2]]
+            fields = [i.value for i in remain[1::2]]
             return Selector(atom, fields, _range)
 
     def expression_application(self, *values: ExpressionT) -> ExpressionT:
-        # rule uses "+" so, this is guaranteed
+        # rule warantie at least one item
         out = values[0]
         for value in values[1:]:
             out = Application(
@@ -241,24 +258,8 @@ class ToSST(Transformer):
                 return value
             # Grammar guarantee that we always have a value
             case _:
-                firstValue = allValues[0]
-                acc1: IntercalatedList[
-                    ExpressionT, Operator
-                ] = IntercalatedListFist(firstValue)
-                acc2: IntercalatedList[Operator, ExpressionT]
-                is_operator = True
-                for value in allValues[1:]:
-                    if is_operator:
-                        acc2 = IntercalatedListSecond(
-                            value, acc1  # type:ignore
-                        )
-                        is_operator = False
-                    else:
-                        acc1 = IntercalatedListSecond(value, acc2)
-                        is_operator = True
-
                 return ExpressionMeaninglessOperatorApplications(
-                    acc1,
+                    list(allValues),
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                 )
 
@@ -280,7 +281,6 @@ class ToSST(Transformer):
     def expression_case_cases(
         self, cases: list[tuple[PatternMatchT, ExpressionT]]
     ) -> list[CaseCase]:
-        print("case cases got: ", cases)
         return [CaseCase(case[0], case[1]) for case in cases]
 
     def expression_case_operators(self, expression: ExpressionT) -> ExpressionT:
@@ -463,11 +463,11 @@ class ToSST(Transformer):
     def expression_let_4(
         self,
         let,
-        bindings: list[LetBinding],
+        binding: LetBinding,
         _in: Token,
         expression: ExpressionT,
     ) -> Let:
-        return Let(bindings, expression)
+        return Let([binding], expression)
 
     def expression_let_lambda(self, expression: ExpressionT) -> ExpressionT:
         return expression
@@ -483,7 +483,7 @@ class ToSST(Transformer):
         return PatternMatchConstructorName.from_lark_token(token)
 
     def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
-        return PatternMatchVariable(token)
+        return PatternMatchVariable.from_lark_token(token)
 
     def pattern_match_literal(self, token: Token) -> PatternMatchLiteral:
         return PatternMatchLiteral(token)
@@ -510,14 +510,15 @@ class ToSST(Transformer):
     ) -> list[PatternMatchT]:
         return list(atoms)
 
-    def pattern_match_function_args_comes(
-        self, *mixedList: PatternMatchT | Token
-    ) -> list[PatternMatchT]:
-        out: list[PatternMatchT] = []
-        for maybe_pattern in mixedList:
-            if not isinstance(maybe_pattern, Token):
-                out.append(maybe_pattern)
-        return out
+    # DEPRECATED
+    # def pattern_match_function_args_comes(
+    #    self, *mixedList: PatternMatchT | Token
+    # ) -> list[PatternMatchT]:
+    #    out: list[PatternMatchT] = []
+    #    for maybe_pattern in mixedList:
+    #        if not isinstance(maybe_pattern, Token):
+    #            out.append(maybe_pattern)
+    #    return out
 
     def pattern_match_function_args(
         self, twoCases: list[PatternMatchT]
@@ -567,7 +568,7 @@ class ToSST(Transformer):
         return (variable, type_expression_inner)
 
     def type_record_inner(
-        items: list[tuple[Token, TypeT]]
+        self, items: list[tuple[Token, TypeT]]
     ) -> list[tuple[Token, TypeT]]:
         return items
 
@@ -612,26 +613,8 @@ class ToSST(Transformer):
                 return value
             # Grammar guarantee that we always have a value
             case _:
-                firstValue: TypeT = allValues[0]  # type:ignore
-                acc1: IntercalatedList[
-                    TypeT, TypeOperator
-                ] = IntercalatedListFist(firstValue)
-                acc2: IntercalatedList[Operator, TypeT]
-                is_operator = True
-                for value in allValues[1:]:
-                    if is_operator:
-                        acc2 = IntercalatedListSecond(
-                            value, acc1  # type:ignore
-                        )
-                        is_operator = False
-                    else:
-                        acc1 = IntercalatedListSecond(
-                            value, acc2  # type:ignore
-                        )
-                        is_operator = True
-
-                return ExpressionMeaninglessOperatorApplications(
-                    acc1,  # type:ignore
+                return TypeMeaninglessOperatorApplications(
+                    allValues,
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                 )
 
@@ -686,6 +669,48 @@ class ToSST(Transformer):
             if isinstance(maybe_var, TypeVariable)
         ]
 
+    ## ----------------- Modules ---------------
+
+    def import_constructor(self, token: Token) -> ImportConstructorName:
+        return ImportConstructorName.from_lark_token(token)
+
+    def import_constructors(
+        self, constructors: list[ImportConstructorName]
+    ) -> list[ImportConstructorName]:
+        return constructors
+
+    def import_type(
+        self,
+        type_name: Token,
+        maybe_constructors: Optional[list[ImportConstructorName]],
+    ) -> ImportType:
+        constructors: list[ImportConstructorName]
+        if maybe_constructors is None:
+            constructors = []
+            _range1 = token2Range(type_name)
+        else:
+            constructors = maybe_constructors
+            _range1 = constructors[-1]._range
+
+        name = ImportTypeName.from_lark_token(type_name)
+        return ImportType(mergeRanges(name._range, _range1), name, constructors)
+
+    def import_function(self, name: Token):
+        return ImportFunction.from_lark_token(name)
+
+    def import_operator(self, name: Token):
+        return ImportOperator.from_lark_token(name)
+
+    def module_import(self, name: ImportNameT) -> ImportNameT:
+        return name
+
+    def module_imports(self, imports: list[ImportNameT]) -> list[ImportNameT]:
+        return imports
+
+    # TODO: ExportModuleName is already used for other stuff
+    # def export_module(self,name:Token)->ExportModuleName:
+    #    export
+
     ## ------------------ Top ------------------
 
     def top_variable_declaration(
@@ -703,7 +728,6 @@ class ToSST(Transformer):
         _type: TypeT,
         layout_end: Token,
     ) -> Declaration:
-        print(_type)
         return Declaration(
             name.value, _type, mergeRanges(token2Range(name), _type._range)
         )

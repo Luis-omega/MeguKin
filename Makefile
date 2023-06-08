@@ -10,16 +10,17 @@ pythonFiles=$(find MeguKin/ tests/ -name "*.py")
 pythonSrc=$(find MeguKin/ -name "*.py")
 
 test:
-	@${sourceEnv};export PYTHONPATH=":";pytest
+	#@${sourceEnv};export PYTHONPATH=":";pytest
+	@${sourceEnv};pytest
 
 install: $(pythonSrc)
-	@${sourceEnv};pip install .
+	@${sourceEnv};pip install -e .
 
 uninstall:
 	@${sourceEnv};pip uninstall ${src}
 
 run:
-	@${sourceEnv};PYTHONPATH=":" python app/main.py hi
+	@${sourceEnv};megukin
 
 gen-stub:
 	@${sourceEnv};stubgen ${src}

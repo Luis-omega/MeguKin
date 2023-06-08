@@ -18,13 +18,15 @@ log.debug("hi check")
 
 def process(lark: Lark, to_parse: str):
     lexed = lark.lex(to_parse)
-    print(list(lexed))
+    print(list(lexed), "\n")
     result = parse_string(lark, None, to_parse)
 
     if isinstance(result, Parser.ParserStageError):
         if isinstance(result, Parser.LarkParseError):
             print(str(result.exception))
             return result.exception
+        elif isinstance(result, Parser.LayoutError):
+            print(result.msg)
         else:
             print(result)
     else:

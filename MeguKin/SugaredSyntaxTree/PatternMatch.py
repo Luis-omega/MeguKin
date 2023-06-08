@@ -1,12 +1,19 @@
 from typing import Union
-from lark import Token
-
-from MeguKin.File import token2Range, mergeRanges
+from MeguKin.File import mergeRanges
 from MeguKin.SugaredSyntaxTree.SST import (
     SST,
     compare_list,
     MetaVar,
     MetaLiteral,
+)
+
+from MeguKin.Pretty import (
+    Nil,
+    parens,
+    DocumentT,
+    DocumentSettings,
+    Text,
+    LineBreak,
 )
 
 PatternMatchT = Union[
@@ -25,20 +32,8 @@ class PatternMatchLiteral(MetaLiteral, PatternMatch):
     pass
 
 
-class PatternMatchVariable(PatternMatch):
-    name: str
-
-    def __init__(self, name: Token):
-        self.name = name.value
-        self._range = token2Range(name)
-
-    def compare(self, other: SST) -> bool:
-        return (
-            isinstance(other, PatternMatchVariable) and self.name == other.name
-        )
-
-    def __repr__(self):
-        return f"PatternMatchVariable({repr(self.name)})"
+class PatternMatchVariable(PatternMatch, MetaVar):
+    pass
 
 
 class PatternMatchConstructor(PatternMatch):
@@ -59,6 +54,15 @@ class PatternMatchConstructor(PatternMatch):
             isinstance(other, PatternMatchConstructor)
             and self.name == other.name
             and compare_list(self.patterns, other.patterns, compare_patterns)
+        )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for pattern in self.patterns[::-1]:
+            new_doc = pattern.to_document(settings)
+            doc = new_doc + LineBreak() + doc
+        return parens(
+            settings, self.name.to_document(settings) + Text(" ") + doc
         )
 
     def __repr__(self):

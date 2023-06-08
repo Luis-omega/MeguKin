@@ -1,38 +1,43 @@
 module Fib(fib1,fib2,linear_fib) where
 
-fib1 :
- Int -> Int
-fib1 = 
-  \ n -> 
-        case n of 
-                  0 -> 1
-                  1 -> 1
-                  m -> fib1 (m-1) + fib1 (m-2) 
+ a = 
+ b.c
 
-# this is another one
-fib2 : 
-      Int -> Int
-fib2 0 = 1
-fib2 1 = 1
-fib2 m = fib2 (m-1) + fib2 (m-2)
-
-newtype FibCounter = 
-  FibCounter Uint
-
-linear_fib_aux : Uint -> Uint -> FibCounter -> Uint
-linear_fib_aux  n1 n2 (FibCounter counter)= 
-  case counter of 
-                  0 -> n2
-                  n-> linear_fib_aux (n2) (n2+n1) (FibCounter (counter-1))
-    
-  
-
-linear_fib : 
-            Uint -> Uint
-linear_fib 0 = 1
-linear_fib 1 = 1
-linear_fib n = linear_fib_aux 1 1 (FibCounter (n-1))
-
+#fib1 :
+# Int -> Int
+#fib1 = 
+#  \ n -> 
+#        case 
+#          n 
+#        of 
+#          0 -> 1
+#          1 -> 1
+#          m -> fib1 (m-1) + fib1 (m-2) 
+#
+## this is another one
+#fib2 : 
+#      Int -> Int
+#fib2 0 = 1
+#fib2 1 = 1
+#fib2 m = fib2 (m-1) + fib2 (m-2)
+#
+#newtype FibCounter = 
+#  FibCounter Uint
+#
+#linear_fib_aux : Uint -> Uint -> FibCounter -> Uint
+#linear_fib_aux  n1 n2 (FibCounter counter)= 
+#  case counter of 
+#                  0 -> n2
+#                  n-> linear_fib_aux (n2) (n2+n1) (FibCounter (counter-1))
+#    
+#  
+#
+#linear_fib : 
+#            Uint -> Uint
+#linear_fib 0 = 1
+#linear_fib 1 = 1
+#linear_fib n = linear_fib_aux 1 1 (FibCounter (n-1))
+#
 
 
 #record_fib_aux : 
