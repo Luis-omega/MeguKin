@@ -279,14 +279,11 @@ import_type : CAPITALIZED_IDENTIFIER [parens{import_constructors}]
 
 import_function : VARIABLE_IDENTIFIER
 
-// TODO: Add [TYPE] here
-import_operator : OPERATOR
+import_operator :[TYPE] OPERATOR
 
 module_import : import_type | import_function | import_operator
 
 module_imports : sep_by1{module_import,COMMA}
-
-export_module : PREFIXED_CAPITALIZED
 
 export_constructor : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED
 
@@ -296,8 +293,7 @@ export_type : (CAPITALIZED_IDENTIFIER| PREFIXED_CAPITALIZED) [parens{export_cons
 
 export_function : PREFIXED_VARIABLE | VARIABLE_IDENTIFIER
 
-// TODO: Add [TYPE] here
-export_operator : (PREFIXED_OPERATOR | OPERATOR)
+export_operator : [TYPE] (PREFIXED_OPERATOR | OPERATOR)
 
 module_export : export_type | export_function | export_operator
 

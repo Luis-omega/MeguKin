@@ -17,9 +17,20 @@ from MeguKin.Pretty import (
     AlwaysLineBreak,
 )
 
-ImportNameT = Union["ImportType", "ImportFunction", "ImportOperator"]
+ImportNameT = Union[
+    "ImportType",
+    "ImportFunction",
+    "ImportOperator",
+    "ImportOperatorExpression",
+    "ImportOperatorType",
+]
 
-ExportNameT = Union["ExportType", "ExportFunction", "ExportOperator"]
+ExportNameT = Union[
+    "ExportType",
+    "ExportFunction",
+    "ExportOperatorExpression",
+    "ExportOperatorType",
+]
 
 
 class ImportConstructorName(MetaVar):
@@ -63,7 +74,11 @@ class ImportFunction(MetaVar):
     pass
 
 
-class ImportOperator(MetaVar):
+class ImportOperatorExpression(MetaVar):
+    pass
+
+
+class ImportOperatorType(MetaVar):
     pass
 
 
@@ -138,12 +153,19 @@ class ExportType(SST):
             settings, indent(parens(settings, maybe_indent(doc)))
         )
 
+    def __repr__(self):
+        return f"ExportType({self.type_name},{self.constructors},{self._range})"
+
 
 class ExportFunction(MetaVar):
     pass
 
 
-class ExportOperator(MetaVar):
+class ExportOperatorExpression(MetaVar):
+    pass
+
+
+class ExportOperatorType(MetaVar):
     pass
 
 

@@ -59,14 +59,16 @@ from MeguKin.SugaredSyntaxTree.Module import (
     ImportTypeName,
     ImportType,
     ImportFunction,
-    ImportOperator,
+    ImportOperatorExpression,
+    ImportOperatorType,
     ImportModuleName,
     ImportModule,
     ExportConstructorName,
     ExportTypeName,
     ExportType,
     ExportFunction,
-    ExportOperator,
+    ExportOperatorExpression,
+    ExportOperatorType,
     ExportModuleName,
     ImportNameT,
     ExportNameT,
@@ -589,7 +591,6 @@ class ToSST(Transformer):
     def type_atom(self, value: TypeT) -> TypeT:
         return value
 
-    # mypy can't find that this is a exahustive pattern match
     def type_application(self, *atoms: TypeT) -> TypeT:  # type:ignore
         match atoms:
             case []:
@@ -614,7 +615,7 @@ class ToSST(Transformer):
             # Grammar guarantee that we always have a value
             case _:
                 return TypeMeaninglessOperatorApplications(
-                    allValues,
+                    list(allValues),
                     mergeRanges(allValues[0]._range, allValues[-1]._range),
                 )
 
@@ -695,11 +696,16 @@ class ToSST(Transformer):
         name = ImportTypeName.from_lark_token(type_name)
         return ImportType(mergeRanges(name._range, _range1), name, constructors)
 
-    def import_function(self, name: Token):
+    def import_function(self, name: Token) -> ImportFunction:
         return ImportFunction.from_lark_token(name)
 
-    def import_operator(self, name: Token):
-        return ImportOperator.from_lark_token(name)
+    def import_operator(
+        self, maybe_type: Optional[Token], name: Token
+    ) -> ImportNameT:
+        if maybe_type is None:
+            return ImportOperatorType.from_lark_token(name)
+        else:
+            return ImportOperatorExpression.from_lark_token(name)
 
     def module_import(self, name: ImportNameT) -> ImportNameT:
         return name
@@ -707,9 +713,43 @@ class ToSST(Transformer):
     def module_imports(self, imports: list[ImportNameT]) -> list[ImportNameT]:
         return imports
 
-    # TODO: ExportModuleName is already used for other stuff
-    # def export_module(self,name:Token)->ExportModuleName:
-    #    export
+    def export_constructor(self, name: Token) -> ExportConstructorName:
+        return ExportConstructorName.from_lark_token(name)
+
+    def export_constructors(
+        self, value: list[ExportConstructorName]
+    ) -> list[ExportConstructorName]:
+        return value
+
+    def export_type(
+        self,
+        name: Token,
+        maybe_constructors: Optional[list[ExportConstructorName]],
+    ) -> ExportType:
+        type_name = ExportTypeName.from_lark_token(name)
+        if maybe_constructors is None:
+            constructors = []
+        else:
+            constructors = maybe_constructors
+        _range = mergeRanges(token2Range(name), constructors[-1]._range)
+        return ExportType(_range, type_name, constructors)
+
+    def export_function(self, variable: Token) -> ExportFunction:
+        return ExportFunction.from_lark_token(variable)
+
+    def export_operator(
+        self, maybe_type: Optional[Token], operator: Token
+    ) -> ExportNameT:
+        if maybe_type is None:
+            return ExportOperatorType.from_lark_token(operator)
+        else:
+            return ExportOperatorExpression.from_lark_token(operator)
+
+    def module_export(self, export: ExportNameT) -> ExportNameT:
+        return export
+
+    def module_exports(self, exports: list[ExportNameT]) -> list[ExportNameT]:
+        return exports
 
     ## ------------------ Top ------------------
 

@@ -168,6 +168,8 @@ class Exports(Top):
 
 @dataclass
 class Module(Top):
+    # TODO: change the name
+    name: str
     exports: Exports
     imports: list[ImportModule]
     data_types: list[DataType]
