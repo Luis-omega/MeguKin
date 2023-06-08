@@ -3,6 +3,20 @@ from dataclasses import dataclass
 
 from MeguKin.SugaredSyntaxTree.SST import MetaVar, SST, compare_list
 
+from MeguKin.Pretty import (
+    Text,
+    DocumentT,
+    Group,
+    LineBreak,
+    NoSpaceLineBreak,
+    parens,
+    Nil,
+    DocumentSettings,
+    maybe_indent,
+    indent,
+    AlwaysLineBreak,
+)
+
 ImportNameT = Union["ImportType", "ImportFunction", "ImportOperator"]
 
 ExportNameT = Union["ExportType", "ExportFunction", "ExportOperator"]
@@ -30,6 +44,15 @@ class ImportType(SST):
                 other.constructors,
                 ImportConstructorName.compare,
             )
+        )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for constructor in self.constructors:
+            new_doc = constructor.to_document(settings)
+            doc = doc + LineBreak() + Text(",") + new_doc
+        return self.type_name.to_document(settings) + parens(
+            settings, indent(parens(settings, maybe_indent(doc)))
         )
 
     def __repr__(self):
@@ -67,6 +90,17 @@ class ImportModule(SST):
             and compare_list(self.imports, other.imports, compare_items)
         )
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for import_ in self.imports:
+            new_doc = import_.to_document(settings)
+            doc = doc + LineBreak() + Text(",") + new_doc
+        return (
+            Text("module ")
+            + self.module_name.to_document(settings)
+            + parens(settings, indent(parens(settings, maybe_indent(doc))))
+        )
+
 
 # -----------------------------------Exports-------------------------------
 
@@ -93,6 +127,15 @@ class ExportType(SST):
                 other.constructors,
                 ExportConstructorName.compare,
             )
+        )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for constructor in self.constructors:
+            new_doc = constructor.to_document(settings)
+            doc = doc + LineBreak() + Text(",") + new_doc
+        return self.type_name.to_document(settings) + parens(
+            settings, indent(parens(settings, maybe_indent(doc)))
         )
 
 

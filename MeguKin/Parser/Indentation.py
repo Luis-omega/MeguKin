@@ -1,20 +1,3 @@
-"""
-:mod:`Indentation` -- Indentation handling
-==========================================
-
-.. module:: MeguKin.Parser.Indentation
-   :synopsis: Inject indentation tokens.
-.. moduleauthor:: Luis Alberto Díaz Díaz
-
-Segmentation
-============
-A file is separated in segments, that means that the 
-only token that appears at column 1 is the firs one. 
-We can safely assume that all other tokens in the 
-original source have at least 2 as column.
-"""
-
-
 from typing import (
     Optional,
     Iterable,
@@ -27,6 +10,7 @@ from typing import (
 from enum import Enum, auto
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from lark.lark import PostLex
 import lark
@@ -55,53 +39,65 @@ class LayoutError(MeguKinError):
         return self.msg
 
 
+@dataclass
 class MissMatchIndentation(LayoutError):
-    pass
+    start_token: Token
+    end_token: Token
 
 
 class LayoutClosedByBadToken(MissMatchIndentation):
-    def __init__(self, start_token: Token, end_token: Token):
-        self.msg = (
-            "Unexpected indentation for "
-            f"{repr_token(end_token)}, while handling the "
-            f"indentation introduced by {repr_token(start_token)}"
-        )
+    pass
+    # def __init__(self, start_token: Token, end_token: Token):
+    #    self.msg = (
+    #        "Unexpected indentation for "
+    #        f"{repr_token(end_token)}, while handling the "
+    #        f"indentation introduced by {repr_token(start_token)}"
+    #    )
 
 
 class ContextFirstValueBeforeStart(MissMatchIndentation):
+    force: bool
+
     def __init__(self, start_token: Token, end_token: Token, force=False):
-        if force:
-            self.msg = (
-                "Unexpected indentation for "
-                f"{repr_token(end_token)}, we expected it to have indentation"
-            )
-        else:
-            self.msg = (
-                "Unexpected indentation for "
-                f"{repr_token(end_token)}, we expected it to be greater than the "
-                f"indentation introduced by {repr_token(start_token)}"
-            )
+        self.start_token = start_token
+        self.end_token = end_token
+        self.force = force
+
+    #    if force:
+    #        self.msg = (
+    #            "Unexpected indentation for "
+    #            f"{repr_token(end_token)}, we expected it to have indentation"
+    #        )
+    #    else:
+    #        self.msg = (
+    #            "Unexpected indentation for "
+    #            f"{repr_token(end_token)}, we expected it to be greater than the "
+    #            f"indentation introduced by {repr_token(start_token)}"
+    #        )
 
 
 class LetInMaybeMisplaced(MissMatchIndentation):
-    def __init__(self, start_token: Token, end_token: Token):
-        self.msg = (
-            "Unexpected indentation for"
-            f"{repr_token(end_token)}, we expected it to be lower than the "
-            f"indentation introduced by {repr_token(start_token)}"
-        )
+    pass
+    # def __init__(self, start_token: Token, end_token: Token):
+    #    self.msg = (
+    #        "Unexpected indentation for"
+    #        f"{repr_token(end_token)}, we expected it to be lower than the "
+    #        f"indentation introduced by {repr_token(start_token)}"
+    #    )
 
 
+@dataclass
 class UnexpectedEOF(LayoutError):
     report_at_token: Token
-    msg: str
+    expected_token: str
+    # msg: str
 
-    def __init__(self, token: Token, expected_token: str):
-        self.report_at_token = token
-        self.msg = (
-            "Unexpected end of input, we expected a "
-            f"{expected_token} after a {repr_token(token)}"
-        )
+    # def __init__(self, token: Token, expected_token: str):
+    #    self.report_at_token = token
+    #    self.msg = (
+    #        "Unexpected end of input, we expected a "
+    #        f"{expected_token} after a {repr_token(token)}"
+    #    )
 
 
 T = TypeVar("T")

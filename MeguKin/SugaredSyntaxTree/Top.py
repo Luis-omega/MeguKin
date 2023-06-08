@@ -39,7 +39,6 @@ class Definition(MetaTop[ExpressionT], Top):
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
         name = Text(self.name)
-        # print("PRETTIE : ", self)
         match self.value:
             case Function(patterns=patterns, expression=expression):
                 doc: DocumentT = Nil()
@@ -60,7 +59,6 @@ class Definition(MetaTop[ExpressionT], Top):
                     ),
                 )
             case Operator():
-                # print("PRETTYE es operador")
                 return name + maybe_indent(
                     Text("=")
                     + LineBreak()
@@ -90,10 +88,33 @@ class ConstructorDefinition(MetaTop[list[TypeT]]):
 
         return compare_list(self.value, value2, compare_types)
 
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for type_ in self.value:
+            new_doc = type_.to_document(settings)
+            doc = doc + LineBreak() + new_doc
+        return (
+            Text(self.name) + LineBreak() + parens(settings, maybe_indent(doc))
+        )
+
 
 class DataType(MetaTop[list[ConstructorDefinition]]):
     def compare_value(self, value2: list[ConstructorDefinition]) -> bool:
         return compare_list(self.value, value2, ConstructorDefinition.compare)
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = Nil()
+        for constructor in self.value:
+            new_doc = constructor.to_document(settings)
+            doc = doc + LineBreak() + Text("| ") + new_doc
+        return (
+            Text("data ")
+            + Text(self.name)
+            + LineBreak()
+            + Text("=")
+            + LineBreak()
+            + parens(settings, maybe_indent(doc))
+        )
 
 
 @dataclass
@@ -110,6 +131,9 @@ class Exports(Top):
             and self.module_name.compare(other.module_name)
             and compare_list(self.exports, other.exports, compare_items)
         )
+
+    # def to_document(self, settings: DocumentSettings) -> DocumentT:
+    #    doc: DocumentT = Nil()
 
 
 # @dataclass

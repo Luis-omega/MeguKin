@@ -14,7 +14,7 @@ from MeguKin.File import FileInfo
 from MeguKin.ModuleLoad.Load import solve_modules_path, load_modules
 from MeguKin.ModuleLoad.Module import Module, ModuleLoadError
 from MeguKin.SugaredSyntaxTree.Transform import ToSST
-from MeguKin.Pretty import defaultSettings, pretty
+from MeguKin.Pretty import defaultSettings, pretty_as_console
 from pprint import pprint
 
 
@@ -45,13 +45,20 @@ def from_string(symbols: list[str], value: str) -> None:
     parsed = parse_string(lark, FileInfo("cli_test", Path("cli")), value)
     if isinstance(parsed, Parser.ParserStageError):
         print("Error trying to parse it!")
-        if isinstance(parsed, Parser.LarkParseError):
-            print(str(parsed.exception))
-            return
-        elif isinstance(parsed, Parser.LayoutError):
-            print(parsed.msg)
-        else:
-            print(parsed)
+        match parsed:
+            case Parser.ParserError():
+                p = pretty_as_console(parsed.document)
+                print(p)
+                return
+            case Parser.FileLoadError():
+                print(f"Can't load file: {parsed.info}")
+                return
+            case Parser.LoadGrammarError():
+                print("Can't load grammar file")
+                return
+            case Parser.LarkLoadError():
+                print("Can't process grammar file!\n", parsed.msg)
+                return
         return
     print(40 * "-", "Lark Tree", 40 * "-", "\n")
     print(parsed.pretty())
@@ -62,7 +69,7 @@ def from_string(symbols: list[str], value: str) -> None:
     doc = tranformed.to_document(defaultSettings)
     pprint(doc)
     print(40 * "-", "Transformed pretty", 40 * "-", "\n")
-    print(pretty(defaultSettings, doc))
+    print(pretty_as_console(doc))
 
 
 def generate_arg_parser():
