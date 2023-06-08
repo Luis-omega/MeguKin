@@ -26,6 +26,7 @@ from MeguKin.Pretty import (
     AlwaysLineBreak,
     maybe_indent,
     indent,
+    Indent,
 )
 
 
@@ -416,12 +417,11 @@ class Let(Expression):
             new_doc = binding.to_document(settings)
             doc = new_doc + AlwaysLineBreak() + doc
         out = (
-            Text("let ")
-            + NoSpaceLineBreak()
-            + indent(doc)
-            + LineBreak()
+            Text("let")
+            + AlwaysLineBreak()
+            + doc
             + Text("in")
-            + LineBreak()
+            + AlwaysLineBreak()
             + indent(self.expression.to_document(settings))
         )
         return out

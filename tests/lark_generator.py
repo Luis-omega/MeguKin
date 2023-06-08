@@ -59,8 +59,10 @@ class DrawState:
     current_doc: DocumentT
     documents: list[DocumentT]
     indent: int
+    before: Optional[str] = None
 
     def append(self, value: str) -> None:
+        print(value)
         match value:
             case "LAYOUT_START":
                 self.documents.append(self.current_doc)
@@ -74,8 +76,25 @@ class DrawState:
                     self.indent, self.current_doc
                 )
                 self.indent = self.indent - 1
+                self.current_doc = self.current_doc + Text(" ") + Text(value)
             case _:
-                self.current_doc = self.current_doc + LineBreak() + Text(value)
+                if "\n" in value:
+                    self.before = value
+                    return
+                elif " " in value:
+                    self.before = value
+                    self.current_doc = self.current_doc + Text(" ")
+                    return
+                match self.before:
+                    case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "DOUBLE_COLON" | "FORALL":
+                        self.current_doc = self.current_doc + Indent(
+                            1, AlwaysLineBreak() + Text(value)
+                        )
+                    case _:
+                        self.current_doc = (
+                            self.current_doc + Text(" ") + Text(value)
+                        )
+        self.before = value
 
 
 def get_terminal_names(terminals, rules, ignore_names):
@@ -166,7 +185,7 @@ class LarkStrategy(st.SearchStrategy):
         self.__rule_labels = {}
 
     def do_draw(self, data):
-        state = DrawState(Nil(), [], 0)
+        state = DrawState(Nil(), [], 0, None)
         start = data.draw(self.start)
         self.draw_symbol(data, start, state)
         return pretty_as_console(state.current_doc)

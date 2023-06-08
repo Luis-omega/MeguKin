@@ -1,7 +1,12 @@
 from typing import Union, Optional, TypeVar
 from dataclasses import dataclass
 
-from MeguKin.SugaredSyntaxTree.Expression import ExpressionT, Function, Operator
+from MeguKin.SugaredSyntaxTree.Expression import (
+    ExpressionT,
+    Function,
+    Operator,
+    Let,
+)
 from MeguKin.SugaredSyntaxTree.Type import TypeT
 from MeguKin.SugaredSyntaxTree.SST import SST, MetaTop, compare_list
 from MeguKin.SugaredSyntaxTree.Module import (
@@ -50,6 +55,11 @@ class Definition(MetaTop[ExpressionT], Top):
                     end_expression = parens(
                         settings, expression.to_document(settings)
                     )
+                elif isinstance(expression, Let):
+                    end_expression = AlwaysLineBreak() + indent(
+                        expression.to_document(settings)
+                    )
+
                 else:
                     end_expression = expression.to_document(settings)
                 return name + maybe_indent(
@@ -63,6 +73,13 @@ class Definition(MetaTop[ExpressionT], Top):
                     Text("=")
                     + LineBreak()
                     + parens(settings, self.value.to_document(settings))
+                )
+            case Let():
+                return (
+                    name
+                    + indent(Text("="))
+                    + AlwaysLineBreak()
+                    + indent(self.value.to_document(settings))
                 )
 
             case _:
