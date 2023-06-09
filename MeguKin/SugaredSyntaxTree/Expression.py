@@ -418,11 +418,12 @@ class Let(Expression):
             doc = new_doc + AlwaysLineBreak() + doc
         out = (
             Text("let")
+            + Indent(1, AlwaysLineBreak() + doc)
             + AlwaysLineBreak()
-            + doc
             + Text("in")
-            + AlwaysLineBreak()
-            + indent(self.expression.to_document(settings))
+            + Indent(
+                1, AlwaysLineBreak() + self.expression.to_document(settings)
+            )
         )
         return out
 

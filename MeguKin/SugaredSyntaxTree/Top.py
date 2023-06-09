@@ -26,6 +26,7 @@ from MeguKin.Pretty import (
     maybe_indent,
     indent,
     AlwaysLineBreak,
+    Indent,
 )
 
 
@@ -78,8 +79,9 @@ class Definition(MetaTop[ExpressionT], Top):
                 return (
                     name
                     + indent(Text("="))
-                    + AlwaysLineBreak()
-                    + indent(self.value.to_document(settings))
+                    + Indent(
+                        1, AlwaysLineBreak() + self.value.to_document(settings)
+                    )
                 )
 
             case _:
