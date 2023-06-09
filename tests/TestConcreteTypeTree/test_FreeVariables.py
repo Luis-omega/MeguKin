@@ -12,6 +12,8 @@ from MeguKin.SugaredSyntaxTree.Expression import (
     ConstructorName,
     RecordUpdate,
     Record,
+    Selector,
+    Application,
 )
 from MeguKin.File import Range
 
@@ -53,3 +55,24 @@ def test_single_meta_var(cls, x: str):
 )
 def test_record_update(expression):
     make_test(expression, [])
+
+
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        (Variable([], "x", empty_range), [(Variable([], "x", empty_range))]),
+        (
+            Application(
+                Variable([], "x", empty_range),
+                Variable([], "y", empty_range),
+                empty_range,
+            ),
+            [
+                (Variable([], "x", empty_range)),
+                (Variable([], "y", empty_range)),
+            ],
+        ),
+    ],
+)
+def test_selector_no_empty(expression, expected):
+    make_test(Selector(expression, ["a", "b"], empty_range), expected)
