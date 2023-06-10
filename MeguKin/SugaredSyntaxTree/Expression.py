@@ -412,10 +412,10 @@ class Let(Expression):
         )
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        doc: DocumentT = Nil()
-        for binding in self.bindings[::-1]:
+        doc: DocumentT = self.bindings[0].to_document(settings)
+        for binding in self.bindings[1:]:
             new_doc = binding.to_document(settings)
-            doc = new_doc + AlwaysLineBreak() + doc
+            doc = doc + AlwaysLineBreak() + new_doc
         out = (
             Text("let")
             + Indent(1, AlwaysLineBreak() + doc)
