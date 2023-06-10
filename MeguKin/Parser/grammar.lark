@@ -102,11 +102,12 @@ SELECTOR_PAREN.2 : ")."
 
 SELECTOR_RPAREN_DOT_VARIABLES.2: SELECTOR_PAREN VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)*
 
-//TODO: add tokens for the case "a.b"
 SELECTOR_DOT_PREFIXED.3 : (PREFIXED_VARIABLE) (DOT VARIABLE_IDENTIFIER)+
 
 SELECTOR_DOT_VARIABLE.3 : VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)+
 
+//TODO: add tokens for "A.B.+"
+//TODO: add token for "@variable"
 
 // --------------------- Combinators  ---------------------
 
@@ -340,3 +341,4 @@ top_import : IMPORT PREFIXED_CAPITALIZED [parens{module_imports}] [ UNQUALIFIED 
 top_imports : top_import+
 
 top: top_module [top_imports] (top_variable_definition | top_variable_declaration | top_data_type | top_type_synonym | top_type_new_type | top_operator_fixity)*
+
