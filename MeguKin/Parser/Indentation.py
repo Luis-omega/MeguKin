@@ -317,7 +317,7 @@ def handle_indentation(
                             Context.EQUAL,
                             stream,
                             stack,
-                            force=False,
+                            force=True,
                         )
 
                         log.debug(
