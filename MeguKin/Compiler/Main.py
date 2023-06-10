@@ -37,6 +37,12 @@ def compile_module(
     return module
 
 
+def from_file(symbols: list[str], path: Path) -> None:
+    with open(path, "r") as f:
+        content = f.read()
+    from_string(symbols, content)
+
+
 def from_string(symbols: list[str], value: str) -> None:
     lark = load_grammar(False, symbols)
     if isinstance(lark, MeguKinError):
@@ -87,23 +93,38 @@ def generate_arg_parser():
         metavar="Lark_rule",
         help="The rule to apply",
     )
-    parser.add_argument(
-        "to_parse",
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-i",
+        "--inline",
         nargs=1,
         type=str,
         metavar="str",
         help="The text to parse",
+    )
+    group.add_argument(
+        "-f",
+        "--file",
+        nargs=1,
+        type=str,
+        metavar="FILE",
+        help="A file to parse",
     )
     return parser.parse_args()
 
 
 def main():
     args = generate_arg_parser()
+    print(args)
 
     if args.symbol is not None:
         symbols = args.symbol
     else:
         symbols = ["top"]
 
-    from_string(symbols, args.to_parse[0])
+    if args.inline is not None:
+        from_string(symbols, args.inline[0])
+    else:
+        from_file(symbols, args.file[0])
+
     return 0

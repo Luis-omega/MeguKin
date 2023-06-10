@@ -3,9 +3,9 @@ SPACES : /[ \n]/+
 %ignore SPACES
 
 // Python re doesn't match "\n" by defect when using `.`
-//COMMENT_REST_OF_LINE: /#[^\n]*/
+COMMENT_REST_OF_LINE: /#[^\n]*/
 
-//%ignore COMMENT_REST_OF_LINE
+%ignore COMMENT_REST_OF_LINE
 
 DIGIT:/[0-9]/
 
