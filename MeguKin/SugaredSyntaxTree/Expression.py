@@ -304,13 +304,13 @@ class Case(Expression):
         doc: DocumentT = Nil()
         for case in self.cases[::-1]:
             new_doc = case.to_document(settings)
-            doc = new_doc + LineBreak() + doc
+            doc = new_doc + AlwaysLineBreak() + doc
         return (
             Text("case")
             + indent(self.expression.to_document(settings))
             + LineBreak()
             + Text("of")
-            + indent(doc)
+            + Indent(1, AlwaysLineBreak() + doc)
         )
 
     def __repr__(self):

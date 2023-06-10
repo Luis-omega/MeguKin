@@ -102,7 +102,10 @@ SELECTOR_PAREN.2 : ")."
 
 SELECTOR_RPAREN_DOT_VARIABLES.2: SELECTOR_PAREN VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)*
 
-SELECTOR_DOT_VARIABLES.3 : (PREFIXED_VARIABLE) ("." VARIABLE_IDENTIFIER)+
+//TODO: add tokens for the case "a.b"
+SELECTOR_DOT_PREFIXED.3 : (PREFIXED_VARIABLE) (DOT VARIABLE_IDENTIFIER)+
+
+SELECTOR_DOT_VARIABLE.3 : VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)+
 
 
 // --------------------- Combinators  ---------------------
@@ -161,10 +164,13 @@ expression_atom: expression_variable
 
 expression_selector_parens : LPAREN expression SELECTOR_RPAREN_DOT_VARIABLES
 
-expression_selector_variables : SELECTOR_DOT_VARIABLES
+expression_selector_prefixed : SELECTOR_DOT_PREFIXED
+
+expression_selector_variable : SELECTOR_DOT_VARIABLE
 
 expression_selector: expression_atom
-  | expression_selector_variables
+  | expression_selector_prefixed
+  | expression_selector_variable
   | expression_selector_parens
 
 expression_type_arg : AT type_atom

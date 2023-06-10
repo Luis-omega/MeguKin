@@ -20,7 +20,6 @@ from MeguKin.Pretty import (
 ImportNameT = Union[
     "ImportType",
     "ImportFunction",
-    "ImportOperator",
     "ImportOperatorExpression",
     "ImportOperatorType",
 ]

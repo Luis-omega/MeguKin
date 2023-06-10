@@ -41,6 +41,8 @@ from MeguKin.SugaredSyntaxTree.Top import (
     Declaration,
     DataType,
     ConstructorDefinition,
+    Exports,
+    Module,
 )
 from MeguKin.SugaredSyntaxTree.Type import (
     TypeT,
@@ -235,11 +237,11 @@ class ToSST(Transformer):
     def expression_selector_parens(
         self, lparen: Token, expression: ExpressionT, selector_parens: Token
     ):
-        fields = selector_parens.value.spli(".")[1:]
+        fields = selector_parens.value.split(".")[1:]
         _range = mergeRanges(token2Range(lparen), token2Range(selector_parens))
         return Selector(expression, fields, _range)
 
-    def expression_selector_variables(self, token: Token):
+    def expression_selector_prefixed(self, token: Token):
         prefixed: list[str] = []
         accessors: list[str] = []
         prefix_re = r"([A-Z]([a-zA-Z0-9])*)(\.[A-Z][a-zA-Z0-9]*)*"
@@ -261,6 +263,24 @@ class ToSST(Transformer):
             token.start_pos + prefix_len,
         )
         expression = Variable(prefixed, name, expression_range)
+        _range = token2Range(token)
+        return Selector(expression, accessors, _range)
+
+    def expression_selector_variable(self, token: Token):
+        all_of = token.value.split(".")
+        name = all_of[0]
+        accessors = all_of[1:]
+
+        prefix_len = len(name)
+        expression_range = Range(
+            token.line,
+            token.line,
+            token.column,
+            token.column + prefix_len,
+            token.start_pos,
+            token.start_pos + prefix_len,
+        )
+        expression = Variable([], name, expression_range)
         _range = token2Range(token)
         return Selector(expression, accessors, _range)
 
@@ -647,7 +667,7 @@ class ToSST(Transformer):
 
     def type_expression_inner(self, types: list[TypeT]) -> TypeT:
         out = types[-1]
-        for type_ in types[1:][::-1]:
+        for type_ in types[::-1][1:]:
             out = TypeArrow(type_, out, mergeRanges(out._range, type_._range))
         return out
 
@@ -839,8 +859,24 @@ class ToSST(Transformer):
     #    )
     #    return DataType(typeName.value, constructors, _range)
 
-    # def top(self, value: TopT) -> TopT:
-    #    return value
+    def top_module(
+        self,
+        module: Token,
+        name: Token,
+        exports: list[ExportNameT],
+        where: Token,
+    ):
+        module_name = ExportModuleName.from_lark_token(name)
+        if exports:
+            _range = mergeRanges(module_name._range, exports[-1]._range)
+        else:
+            _range = module_name._range
+        return Exports(_range, module_name, exports)
+
+        # FIXME:
+
+    def top(self, top_module: Exports, imports, *all_others) -> TopT:
+        return Module(None, top_module, imports, [], [], list(all_others))
 
 
 def tree2sugared(trees: list[Tree]) -> list[TopT]:

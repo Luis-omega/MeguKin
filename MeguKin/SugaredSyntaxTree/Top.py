@@ -151,8 +151,20 @@ class Exports(Top):
             and compare_list(self.exports, other.exports, compare_items)
         )
 
-    # def to_document(self, settings: DocumentSettings) -> DocumentT:
-    #    doc: DocumentT = Nil()
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc: DocumentT = (
+            Text("module ")
+            + self.module_name.to_document(settings)
+            + Text("( ")
+        )
+        new_doc: DocumentT = Nil()
+        for export in self.exports:
+            new_doc = new_doc + LineBreak() + export.to_document(settings)
+        doc = doc + Indent(1, new_doc) + LineBreak() + Text(")")
+        return doc
+
+    def __repr__(self):
+        return f"Exports{self.module_name},{self.exports})"
 
 
 # @dataclass
@@ -170,8 +182,7 @@ class Exports(Top):
 
 @dataclass
 class Module(Top):
-    # TODO: change the name
-    name: str
+    # The name is inside Exports
     exports: Exports
     imports: list[ImportModule]
     data_types: list[DataType]
@@ -196,3 +207,32 @@ class Module(Top):
                 self.definitions, other.definitions, Definition.compare
             )
         )
+
+    def to_document(self, settings: DocumentSettings) -> DocumentT:
+        doc = (
+            self.exports.to_document(settings)
+            + AlwaysLineBreak()
+            # + self.imports: list[ImportModule]
+            + list_to_document(self.data_types, settings)
+            + list_to_document(self.declarations, settings)
+            + list_to_document(self.definitions, settings)
+        )
+        return doc
+
+    # FIXME:
+    def __rep__(self):
+        return "Module"
+
+
+def list_to_document(lst: list[SST], settings: DocumentSettings) -> DocumentT:
+    doc: DocumentT = Nil()
+    for item in lst:
+        print(item)
+        doc = doc + AlwaysLineBreak() + item.to_document(settings)
+    return doc
+
+    # exports: Exports
+    # imports: list[ImportModule]
+    # data_types: list[DataType]
+    # declarations: list[Declaration]
+    # definitions: list[Definition]
