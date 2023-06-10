@@ -69,6 +69,7 @@ LEFT_ARROW.2:"<-"
 LPAREN:"("
 RPAREN:")"
 
+
 LBRACE:"{"
 RBRACE:"}"
 
@@ -89,7 +90,7 @@ OPERATOR.1: OPERATOR_ALONE_CHARACTER (OPERATOR_NOT_ALONE_CHARACTER | OPERATOR_AL
 
 INFIX_IDENTIFIER : "`" (VARIABLE_IDENTIFIER | CAPITALIZED_IDENTIFIER | PREFIXED_CAPITALIZED | PREFIXED_VARIABLE) "`"
 
-MODULE_PREFIX.3: (CAPITALIZED_IDENTIFIER ".")+
+MODULE_PREFIX.4: (CAPITALIZED_IDENTIFIER ".")+
 
 PREFIXED_OPERATOR.2 : MODULE_PREFIX OPERATOR
 
@@ -97,7 +98,11 @@ PREFIXED_VARIABLE.2 : MODULE_PREFIX VARIABLE_IDENTIFIER
 
 PREFIXED_CAPITALIZED : MODULE_PREFIX CAPITALIZED_IDENTIFIER
 
+SELECTOR_PAREN.2 : ")."
 
+SELECTOR_RPAREN_DOT_VARIABLES.2: SELECTOR_PAREN VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)*
+
+SELECTOR_DOT_VARIABLES.3 : (PREFIXED_VARIABLE) ("." VARIABLE_IDENTIFIER)+
 
 
 // --------------------- Combinators  ---------------------
@@ -154,9 +159,13 @@ expression_atom: expression_variable
 //here we are hidding the return call to expression with parens
   | parens{expression_annotation}
 
-// Can we use a real token for the last part?
+expression_selector_parens : LPAREN expression SELECTOR_RPAREN_DOT_VARIABLES
+
+expression_selector_variables : SELECTOR_DOT_VARIABLES
+
 expression_selector: expression_atom
-  | (expression_variable | expression_constructor | parens{expression_let}) (DOT VARIABLE_IDENTIFIER)+ 
+  | expression_selector_variables
+  | expression_selector_parens
 
 expression_type_arg : AT type_atom
 

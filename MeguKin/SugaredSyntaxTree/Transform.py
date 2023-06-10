@@ -1,6 +1,7 @@
 from typing import Optional, TypeVar
 from functools import reduce
 import logging
+import re
 
 from lark import Transformer, v_args, Tree
 
@@ -231,15 +232,40 @@ class ToSST(Transformer):
             mergeRanges(token2Range(at), _type._range),
         )
 
-    def expression_selector(
-        self, atom: ExpressionT, *remain: Token
-    ) -> ExpressionT:
-        if len(remain) == 0:
-            return atom
-        else:
-            _range = mergeRanges(atom._range, token2Range(remain[-1]))
-            fields = [i.value for i in remain[1::2]]
-            return Selector(atom, fields, _range)
+    def expression_selector_parens(
+        self, lparen: Token, expression: ExpressionT, selector_parens: Token
+    ):
+        fields = selector_parens.value.spli(".")[1:]
+        _range = mergeRanges(token2Range(lparen), token2Range(selector_parens))
+        return Selector(expression, fields, _range)
+
+    def expression_selector_variables(self, token: Token):
+        prefixed: list[str] = []
+        accessors: list[str] = []
+        prefix_re = r"([A-Z]([a-zA-Z0-9])*)(\.[A-Z][a-zA-Z0-9]*)*"
+        find = re.search(prefix_re, token.value)
+        group = find.group()  # type:ignore
+        prefixed = group.split(".")
+        remain = token.value[len(group) + 1 :]
+        remain_list = remain.split(".")
+        name = remain_list[0]
+        accessors = remain_list[1:]
+
+        prefix_len = len(group)
+        expression_range = Range(
+            token.line,
+            token.line,
+            token.column,
+            token.column + prefix_len,
+            token.start_pos,
+            token.start_pos + prefix_len,
+        )
+        expression = Variable(prefixed, name, expression_range)
+        _range = token2Range(token)
+        return Selector(expression, accessors, _range)
+
+    def expression_selector(self, expression: ExpressionT) -> ExpressionT:
+        return expression
 
     def expression_application(self, *values: ExpressionT) -> ExpressionT:
         # rule warantie at least one item

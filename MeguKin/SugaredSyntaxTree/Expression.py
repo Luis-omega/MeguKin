@@ -129,15 +129,13 @@ class Selector(Expression):
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
         return (
-            Group(
-                parens(settings, expression_parens(settings, self.expression))
-            )
+            Group(expression_parens(settings, self.expression))
             + Text(".")
             + Text(".".join(self.fields))
         )
 
     def __repr__(self):
-        return f"RecordUpdate({self.expression},{self.fields})"
+        return f"Selector({self.expression},{self.fields},{self._range})"
 
 
 class AnnotatedExpression(Expression):
