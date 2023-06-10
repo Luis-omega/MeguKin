@@ -234,11 +234,14 @@ def make_error_context_from_tokens(
 
 def get_line_error_from_token(text, token: Token) -> DocumentT:
     line = get_line_from_pos(text, token.start_pos)
+    token_lenght = token.end_column - token.column
+    if token_lenght <= 0:
+        token_lenght = 1
 
     doc = (
         Text(line)
         + AlwaysLineBreak()
-        + Text(token.column * " " + "^")
+        + Text((token.column - 1) * " " + token_lenght * "^")
         + AlwaysLineBreak()
     )
     return doc
