@@ -96,7 +96,8 @@ class Declaration(MetaTop[TypeT], Top):
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
         return Text(self.name) + maybe_indent(
-            Text(":") + LineBreak() + self.value.to_document(settings)
+            Text(":")
+            + Group(Indent(1, LineBreak() + self.value.to_document(settings)))
         )
 
 

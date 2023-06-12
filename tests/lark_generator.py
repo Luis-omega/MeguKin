@@ -79,11 +79,10 @@ class DrawState:
                     self.indent, self.current_doc
                 )
                 self.indent = self.indent - 1
-                self.current_doc = self.current_doc + Text(" ") + Text(value)
+                self.current_doc = self.current_doc + Text(" ")
             case _:
                 if " " in value:
                     self.before = value
-                    self.current_doc = self.current_doc + Text(" ")
                     return
                 match self.before:
                     case "LET" | "IN" | "DO" | "CASE" | "OF" | "RIGHT_ARROW" | "LAMBDA" | "DOUBLE_COLON" | "FORALL":
@@ -118,6 +117,12 @@ def get_strategy_for_terminal(t) -> st.SearchStrategy:
         or t.name == "SPACES"
     ):
         return st.just(" ")
+    elif (
+        t.name == "LAYOUT_START"
+        or t.name == "LAYOUT_END"
+        or t.name == "LAYOUT_SEPARATOR"
+    ):
+        return st.just(t.name)
     else:
         return st.from_regex(t.pattern.to_regexp(), fullmatch=True)
 

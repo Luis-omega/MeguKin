@@ -1,6 +1,7 @@
 from pathlib import Path
 from argparse import ArgumentParser
 
+from MeguKin.Loggers import get_logger
 from MeguKin.Parser.Parser import (
     load_grammar,
     parse,
@@ -16,6 +17,8 @@ from MeguKin.ModuleLoad.Module import Module, ModuleLoadError
 from MeguKin.SugaredSyntaxTree.Transform import ToSST
 from MeguKin.Pretty import defaultSettings, pretty_as_console
 from pprint import pprint
+
+log = get_logger(__name__)
 
 
 def compile_module(

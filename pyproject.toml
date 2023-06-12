@@ -45,6 +45,7 @@ addopts = [
 pythonpath = [
   "."
 ]
+log_cli = false
 
 [tool.setuptools.packages.find]
 where = ["."]

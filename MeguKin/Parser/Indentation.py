@@ -8,7 +8,6 @@ from typing import (
     NewType,
 )
 from enum import Enum, auto
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -16,16 +15,14 @@ from lark.lark import PostLex
 import lark
 
 
+from MeguKin.Loggers import get_logger
 from MeguKin.Parser.Token import Token
 from MeguKin.File import FileInfo
 from MeguKin.Error import MeguKinError
 
 import sys
 
-log = logging.getLogger(__name__)
-handler = logging.FileHandler("log")
-log.addHandler(handler)
-log.setLevel(logging.INFO)
+log = get_logger(__name__)
 
 
 def repr_token(token: Token):

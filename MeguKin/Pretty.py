@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from typing import TypeVar, Union
 from enum import Enum, auto
-import logging
 from abc import ABC, abstractmethod
 
-log = logging.getLogger(__name__)
-handler = logging.FileHandler("log")
-log.addHandler(handler)
-log.setLevel(logging.DEBUG)
+from MeguKin.Loggers import get_logger
+
+
+log = get_logger(__name__)
 
 T = TypeVar("T")
 
@@ -51,8 +50,11 @@ class Mode(Enum):
 
 
 class Document(ABC):
-    def __add__(self, other: DocumentT) -> "Concat":
-        return Concat(self, other)  # type:ignore
+    def __add__(self, other: "Document") -> "Concat":
+        if isinstance(other, Document):
+            return Concat(self, other)  # type:ignore
+        else:
+            raise Exception(f"Bad concatenation of document with {other}")
 
 
 @dataclass
@@ -174,6 +176,10 @@ def fits(  # type:ignore
 def format_inner(  # type:ignore
     width: int, consumed: int, stack: list[tuple[int, Mode, DocumentT]]
 ) -> SimpleDocumentT:
+    if stack:
+        log.debug(
+            f"format_inner, width:{width}, consumed:{consumed}, stack_tip:{stack[-1]} "
+        )
     match stack:
         case []:
             return SimpleNil()
@@ -224,6 +230,7 @@ def format_inner(  # type:ignore
             else:
                 others.append((i, Mode.Break, Indent(level, doc)))
                 return format_inner(width, consumed, others)
+    log.debug("format_inner: Bad case reached")
 
 
 def format(width: int, doc: DocumentT) -> SimpleDocumentT:
@@ -241,6 +248,7 @@ def layout(settings: DocumentSettings, doc: SimpleDocumentT):
             rended_text = text
             return rended_text + layout(settings, doc2)
         case SimpleIndent(level, doc2):
+            print("To indent: ", level, doc2)
             return (
                 "\n" + (level * indentation_size) * " " + layout(settings, doc2)
             )

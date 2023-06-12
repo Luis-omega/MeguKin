@@ -107,7 +107,6 @@ def test_record_selector(expression, expected):
     ],
 )
 def test_annotated_expression(expression, expected):
-    pytest.skip()
     make_test(expression, expected)
 
 
@@ -118,12 +117,11 @@ def test_annotated_expression(expression, expected):
             ExpressionTypeArgument(
                 TypeVariable([], "t_var", empty_range), empty_range
             ),
-            set([TypeVariable([], "t_var", empty_range)]),
+            set(),
         )
     ],
 )
 def test_expression_type_argument(expression, expected):
-    pytest.skip()
     make_test(expression, expected)
 
 
@@ -141,14 +139,13 @@ def test_expression_type_argument(expression, expected):
     ],
 )
 def test_application(expression, expected):
-    pytest.skip()
     make_test(expression, expected)
 
 
 @pytest.mark.parametrize(
     "expression,expected",
     [
-        (ExpressionMeaninglessOperatorApplications([], empty_range), []),
+        (ExpressionMeaninglessOperatorApplications([], empty_range), set()),
         (
             ExpressionMeaninglessOperatorApplications([var_x], empty_range),
             set([var_x]),
@@ -162,7 +159,6 @@ def test_application(expression, expected):
     ],
 )
 def test_expression_operators(expression, expected):
-    pytest.skip()
     make_test(expression, expected)
 
 

@@ -17,6 +17,8 @@ from MeguKin.Pretty import (
     Nil,
     DocumentSettings,
     maybe_indent,
+    Indent,
+    AlwaysLineBreak,
 )
 
 TypeT = Union[
@@ -132,12 +134,13 @@ class TypeArrow(Type):
         )
 
     def to_document(self, settings: DocumentSettings):
+        print("TO Document: ", self)
         match self.domain:
             case TypeArrow():
                 return (
                     parens(settings, self.domain.to_document(settings))
                     + LineBreak()
-                    + "-> "
+                    + Text("-> ")
                     + self.codomain.to_document(settings)
                 )
             case _:
@@ -171,16 +174,16 @@ class TypeForall(Type):
         )
 
     def to_document(self, settings: DocumentSettings):
-        doc: DocumentT = Nil()
-        for arg in self.args[::-1]:
+        doc: DocumentT = self.args[0].to_document(settings)
+        for arg in self.args[1:]:
             new_doc = arg.to_document(settings)
-            doc = new_doc + LineBreak() + doc
-        return Text("forall") + maybe_indent(
-            Group(doc)
+            doc = doc + LineBreak() + new_doc
+        return (
+            Text("forall")
+            + Indent(1, LineBreak() + doc)
             + LineBreak()
             + Text(".")
-            + LineBreak()
-            + self.expression.to_document(settings)
+            + Indent(1, LineBreak() + self.expression.to_document(settings))
         )
 
     def __repr__(self):
