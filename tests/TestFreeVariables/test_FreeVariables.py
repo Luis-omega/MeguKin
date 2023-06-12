@@ -1,11 +1,13 @@
 import pytest
 
-from MeguKin.ConcreteSyntaxTree.Transform import get_expression_free_variables
-import MeguKin.SugaredSyntaxTree as SST
+from MeguKin.SugaredSyntaxTree.FreeVariables import (
+    get_expression_free_variables,
+)
 from MeguKin.SugaredSyntaxTree.SST import MetaRecord, MetaVar
 from MeguKin.Parser.Token import Token
 from MeguKin.SugaredSyntaxTree.Type import TypeVariable
 from MeguKin.SugaredSyntaxTree.Expression import (
+    ExpressionT,
     Variable,
     Literal,
     Operator,
@@ -29,7 +31,7 @@ from MeguKin.File import Range
 empty_range = Range(0, 0, 0, 0, 0, 0)
 
 
-def make_test(expression: SST.Expression.ExpressionT, expected: set[MetaVar]):
+def make_test(expression: ExpressionT, expected: set[MetaVar]):
     result = get_expression_free_variables(expression)
     assert result == expected
 
