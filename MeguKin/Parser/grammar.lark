@@ -93,21 +93,18 @@ INFIX_IDENTIFIER : "`" (VARIABLE_IDENTIFIER | CAPITALIZED_IDENTIFIER | PREFIXED_
 MODULE_PREFIX.4: (CAPITALIZED_IDENTIFIER ".")+
 
 PREFIXED_OPERATOR.2 : MODULE_PREFIX OPERATOR
-
 PREFIXED_VARIABLE.2 : MODULE_PREFIX VARIABLE_IDENTIFIER
-
 PREFIXED_CAPITALIZED : MODULE_PREFIX CAPITALIZED_IDENTIFIER
 
 SELECTOR_PAREN.2 : ")."
-
 SELECTOR_RPAREN_DOT_VARIABLES.2: SELECTOR_PAREN VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)*
-
 SELECTOR_DOT_PREFIXED.3 : (PREFIXED_VARIABLE) (DOT VARIABLE_IDENTIFIER)+
-
 SELECTOR_DOT_VARIABLE.3 : VARIABLE_IDENTIFIER (DOT VARIABLE_IDENTIFIER)+
 
-//TODO: add tokens for "A.B.+"
-//TODO: add token for "@variable"
+TYPE_ARGUMENT_RPAREN.2 : "@("
+TYPE_ARGUMENT_PREFIXED_TYPE.3 : AT PREFIXED_CAPITALIZED
+TYPE_ARGUMENT_TYPE.3 : AT CAPITALIZED_IDENTIFIER
+
 
 // --------------------- Combinators  ---------------------
 
@@ -170,11 +167,17 @@ expression_selector_prefixed : SELECTOR_DOT_PREFIXED
 expression_selector_variable : SELECTOR_DOT_VARIABLE
 
 expression_selector: expression_atom
+  | expression_selector_parens
   | expression_selector_prefixed
   | expression_selector_variable
-  | expression_selector_parens
 
-expression_type_arg : AT type_atom
+expression_type_arg_parens :TYPE_ARGUMENT_RPAREN type_expression_inner LPAREN
+expression_type_arg_prefixed : TYPE_ARGUMENT_PREFIXED_TYPE
+expression_type_arg_alone : TYPE_ARGUMENT_TYPE
+
+expression_type_arg : expression_type_arg_parens
+  | expression_type_arg_prefixed
+  | expression_type_arg_alone
 
 expression_application: expression_selector (expression_selector | expression_type_arg)*
 

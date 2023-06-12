@@ -54,6 +54,7 @@ from MeguKin.SugaredSyntaxTree.Type import (
     TypeConcreteName,
     TypeArrow,
     TypeForall,
+    TypeRecordField,
 )
 
 
@@ -120,18 +121,22 @@ class ToSST(Transformer):
     # ------------------ Expressions ------------------
     def expression_record_update_item(
         self, variable: Token, equal: Token, expression: ExpressionT
-    ) -> tuple[str, Range, ExpressionT]:
-        return (variable.value, token2Range(variable), expression)
+    ) -> tuple[Variable, Range, ExpressionT]:
+        return (
+            Variable.from_lark_token(variable),
+            token2Range(variable),
+            expression,
+        )
 
     def expression_record_update_inner(
-        self, results: list[tuple[str, Range, ExpressionT]]
-    ) -> list[tuple[str, Range, ExpressionT]]:
+        self, results: list[tuple[Variable, Range, ExpressionT]]
+    ) -> list[tuple[Variable, Range, ExpressionT]]:
         return results
 
     def expression_record_update(
-        self, items: list[tuple[str, Range, ExpressionT]]
+        self, items: list[tuple[Variable, Range, ExpressionT]]
     ) -> RecordUpdate:
-        return RecordUpdate(items)
+        return RecordUpdate(items)  # ignore
 
     def expression_record_item(
         self, variable: Token, colon: Token, expression: ExpressionT
@@ -145,21 +150,25 @@ class ToSST(Transformer):
         layout_start: Token,
         expression: ExpressionT,
         layout_end: Token,
-    ) -> tuple[str, Range, ExpressionT]:
-        return (variable.value, token2Range(variable), expression)
+    ) -> tuple[Variable, Range, ExpressionT]:
+        return (
+            Variable.from_lark_token(variable),
+            token2Range(variable),
+            expression,
+        )
 
     def expression_record_item_single(
         self, variable: Token
-    ) -> tuple[str, Range, None]:
-        return (variable.value, token2Range(variable), None)
+    ) -> tuple[Variable, Range, None]:
+        return (Variable.from_lark_token(variable), token2Range(variable), None)
 
     def expression_record_inner(
-        self, results: list[tuple[str, Range, Optional[ExpressionT]]]
-    ) -> list[tuple[str, Range, Optional[ExpressionT]]]:
+        self, results: list[tuple[Variable, Range, Optional[ExpressionT]]]
+    ) -> list[tuple[Variable, Range, Optional[ExpressionT]]]:
         return results
 
     def expression_record(
-        self, items: list[tuple[str, Range, Optional[ExpressionT]]]
+        self, items: list[tuple[Variable, Range, Optional[ExpressionT]]]
     ) -> Record:
         return Record(items)
 
@@ -227,32 +236,55 @@ class ToSST(Transformer):
     def expression_atom(self, atom: ExpressionT) -> ExpressionT:
         return atom
 
-    def expression_type_arg(self, at, _type: TypeT) -> ExpressionTypeArgument:
+    def expression_type_arg_parens(
+        self, at_rparen: Token, type_expression: TypeT, lparen: Token
+    ) -> ExpressionTypeArgument:
         return ExpressionTypeArgument(
-            # We want the full @Type to be signaled on error
-            _type,
-            mergeRanges(token2Range(at), _type._range),
+            type_expression,
+            mergeRanges(token2Range(at_rparen), type_expression._range),
         )
+
+    def expression_type_arg_prefixed(
+        self, token: Token
+    ) -> ExpressionTypeArgument:
+        full = token.value[1:]
+        list_of = full.split(".")
+        name = list_of[-1]
+        prefix = list_of[:-1]
+        type_ = TypeVariable(prefix, name, token2Range(token))
+        return ExpressionTypeArgument(type_, type_._range)
+
+    def expression_type_arg_alone(self, token: Token):
+        name = token.value[1:]
+        type_ = TypeVariable([], name, token2Range(token))
+        return ExpressionTypeArgument(type_, type_._range)
+
+    def expression_type_arg(
+        self, exp: ExpressionTypeArgument
+    ) -> ExpressionTypeArgument:
+        return exp
 
     def expression_selector_parens(
         self, lparen: Token, expression: ExpressionT, selector_parens: Token
-    ):
-        fields = selector_parens.value.split(".")[1:]
-        _range = mergeRanges(token2Range(lparen), token2Range(selector_parens))
-        return Selector(expression, fields, _range)
+    ) -> ExpressionT:
+        # dicard the ")." token
+        fields = selector_parens.value.split(".", 1)[1]
+        for selector_field, selector_range in selectors_split(
+            fields, expression._range
+        ):
+            expression = Selector(
+                expression,
+                selector_field,
+                mergeRanges(expression._range, selector_range),
+            )
+        return expression
 
-    def expression_selector_prefixed(self, token: Token):
+    def expression_selector_prefixed(self, token: Token) -> ExpressionT:
         prefixed: list[str] = []
-        accessors: list[str] = []
         prefix_re = r"([A-Z]([a-zA-Z0-9])*)(\.[A-Z][a-zA-Z0-9]*)*"
         find = re.search(prefix_re, token.value)
         group = find.group()  # type:ignore
         prefixed = group.split(".")
-        remain = token.value[len(group) + 1 :]
-        remain_list = remain.split(".")
-        name = remain_list[0]
-        accessors = remain_list[1:]
-
         prefix_len = len(group)
         expression_range = Range(
             token.line,
@@ -262,27 +294,44 @@ class ToSST(Transformer):
             token.start_pos,
             token.start_pos + prefix_len,
         )
-        expression = Variable(prefixed, name, expression_range)
-        _range = token2Range(token)
-        return Selector(expression, accessors, _range)
+        remain = token.value[len(group) + 1 :]
+        fields = remain.split(".")
+        name = fields[0]
+        expression: ExpressionT = Variable(prefixed, name, expression_range)
+        for selector_field, selector_range in selectors_split(
+            fields[1:], expression._range
+        ):
+            expression = Selector(
+                expression,
+                selector_field,
+                mergeRanges(expression._range, selector_range),
+            )
+        return expression
 
-    def expression_selector_variable(self, token: Token):
-        all_of = token.value.split(".")
+    def expression_selector_variable(self, token: Token) -> ExpressionT:
+        all_of = token.value.split(".", 1)
         name = all_of[0]
-        accessors = all_of[1:]
+        accessors = all_of[1]
 
         prefix_len = len(name)
         expression_range = Range(
             token.line,
             token.line,
             token.column,
-            token.column + prefix_len,
+            token.column + prefix_len + 1,
             token.start_pos,
-            token.start_pos + prefix_len,
+            token.start_pos + prefix_len + 1,
         )
-        expression = Variable([], name, expression_range)
-        _range = token2Range(token)
-        return Selector(expression, accessors, _range)
+        expression: ExpressionT = Variable([], name, expression_range)
+        for selector_field, selector_range in selectors_split(
+            accessors, expression._range
+        ):
+            expression = Selector(
+                expression,
+                selector_field,
+                mergeRanges(expression._range, selector_range),
+            )
+        return expression
 
     def expression_selector(self, expression: ExpressionT) -> ExpressionT:
         return expression
@@ -602,8 +651,12 @@ class ToSST(Transformer):
 
     def type_record_item(
         self, variable: Token, colon: Token, type_expression_inner: TypeT
-    ) -> tuple[Token, TypeT]:
-        return (variable, type_expression_inner)
+    ) -> tuple[TypeRecordField, Range, TypeT]:
+        return (
+            TypeRecordField.from_lark_token(variable),
+            mergeRanges(token2Range(variable), type_expression_inner._range),
+            type_expression_inner,
+        )
 
     def type_record_item_layout(
         self,
@@ -612,18 +665,22 @@ class ToSST(Transformer):
         layout_start: Token,
         type_expression_inner: TypeT,
         layout_end: Token,
-    ) -> tuple[Token, TypeT]:
-        return (variable, type_expression_inner)
+    ) -> tuple[TypeRecordField, Range, TypeT]:
+        return (
+            TypeRecordField.from_lark_token(variable),
+            mergeRanges(token2Range(variable), type_expression_inner._range),
+            type_expression_inner,
+        )
 
     def type_record_inner(
-        self, items: list[tuple[Token, TypeT]]
-    ) -> list[tuple[Token, TypeT]]:
+        self, items: list[tuple[TypeRecordField, Range, TypeT]]
+    ) -> list[tuple[TypeRecordField, Range, TypeT]]:
         return items
 
-    def type_record(self, items: list[tuple[Token, TypeT]]) -> TypeRecord:
-        return TypeRecord(
-            [(token.value, token2Range(token), type_) for token, type_ in items]
-        )
+    def type_record(
+        self, items: list[tuple[TypeRecordField, Range, TypeT]]
+    ) -> TypeRecord:
+        return TypeRecord(items)
 
     def type_operator(self, operator: Token) -> TypeOperator:
         return TypeOperator.from_lark_token(operator)
@@ -882,3 +939,43 @@ class ToSST(Transformer):
 def tree2sugared(trees: list[Tree]) -> list[TopT]:
     toSST = ToSST()
     return [toSST.transform(tree) for tree in trees]
+
+
+def selectors_split(
+    selectors: str, old_range: Range
+) -> list[tuple[str, Range]]:
+    print("selectors_split got: ", selectors)
+    list_selectors = selectors.split(".")
+    intermediate_range: Range = old_range
+    out: list[tuple[str, Range]] = []
+    for selector in list_selectors[:-1]:
+        intermediate_range = range_from_range_and_string(
+            intermediate_range, selector
+        )
+        out.append((selector, intermediate_range))
+    selector = list_selectors[-1]
+    final = range_from_range_and_string(intermediate_range, selector)
+    final = Range(
+        intermediate_range.line_start,
+        intermediate_range.line_end,
+        intermediate_range.column_end,
+        intermediate_range.column_end + len(selector) + 1,
+        intermediate_range.position_end,
+        intermediate_range.position_end + len(selector) + 1,
+    )
+    out.append((selector, final))
+    return out
+
+
+def range_from_range_and_string(_range: Range, value: str) -> Range:
+    """
+    to use for selectors split
+    """
+    return Range(
+        _range.line_start,
+        _range.line_end,
+        _range.column_end,
+        _range.column_end + len(value) + 1,
+        _range.position_end,
+        _range.position_end + len(value) + 1,
+    )

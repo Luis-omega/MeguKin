@@ -49,7 +49,11 @@ class TypeOperator(MetaVar, Type):
     pass
 
 
-class TypeRecord(MetaRecord[TypeT], Type):
+class TypeRecordField(MetaVar, Type):
+    pass
+
+
+class TypeRecord(MetaRecord[TypeT, TypeRecordField], Type):
     @staticmethod
     def compare_items(item1: TypeT, item2: TypeT):
         return item1.compare(item2)

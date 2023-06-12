@@ -97,6 +97,9 @@ class MetaVar(SST):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.prefix},{self.name},{self._range})"
 
+    def __hash__(self):
+        return hash(".".join(self.prefix) + "." + self.name)
+
 
 class MetaLiteral(SST):
     def __init__(self, token: Token):
@@ -142,20 +145,25 @@ class MetaTop(SST, Generic[T]):
         return f"{type(self).__name__}({self.name},{self.value})"
 
 
-class MetaRecord(SST, Generic[T]):
-    _map: list[tuple[str, Range, T]]
+T_MetaRecord = TypeVar("T_MetaRecord", bound="MetaVar")
 
-    def __init__(self, _map: list[tuple[str, Range, T]]) -> None:
+
+class MetaRecord(SST, Generic[T, T_MetaRecord]):
+    _map: list[tuple[T_MetaRecord, Range, T]]
+
+    def __init__(self, _map: list[tuple[T_MetaRecord, Range, T]]) -> None:
         self._map = _map
         self._range = mergeRanges(_map[-1][1], _map[0][1])
 
     def compare(self, other: SST) -> bool:
         def compare_map_items(
-            item1: tuple[str, Range, T],
-            item2: tuple[str, Range, T],
+            item1: tuple[MetaVar, Range, T],
+            item2: tuple[MetaVar, Range, T],
         ) -> bool:
             compare_items = getattr(self, "compare_items")
-            return item1[0] == item2[0] and compare_items(item1[2], item2[2])
+            return item1[0].compare(item2[0]) and compare_items(
+                item1[2], item2[2]
+            )
 
         return isinstance(other, type(self)) and compare_list(
             self._map, other._map, compare_map_items
@@ -173,17 +181,20 @@ class MetaRecord(SST, Generic[T]):
             case []:
                 return Text("{}")
             case [(name, _, value)]:
+                print("name is : ", self)
                 return (
-                    Text(f"{{{name}")
+                    Text(f"{{{name.to_document(settings)}")
                     + self.item_to_document(settings, value)
                     + Text("}")
                 )
             case [(name, _, value), *others]:
-                doc = Text(f"{name}") + self.item_to_document(settings, value)
+                doc = Text(
+                    f"{name.to_document(settings)}"
+                ) + self.item_to_document(settings, value)
                 for item in others:
                     (name, _, value) = item
                     # Leading comma here
-                    new_doc = Text(f",{name}") + (
+                    new_doc = Text(f",{name.to_document(settings)}") + (
                         # we expect this function to put a "=" or ":" if needed
                         self.item_to_document(settings, value)
                     )

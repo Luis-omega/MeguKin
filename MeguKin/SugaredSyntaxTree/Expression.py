@@ -77,7 +77,7 @@ class ConstructorName(MetaVar, Expression):
     pass
 
 
-class RecordUpdate(MetaRecord[ExpressionT], Expression):
+class RecordUpdate(MetaRecord[ExpressionT, Variable], Expression):
     @staticmethod
     def compare_items(
         item1: ExpressionT,
@@ -89,7 +89,7 @@ class RecordUpdate(MetaRecord[ExpressionT], Expression):
         return Text("=") + Group(expression_parens(settings, item))
 
 
-class Record(MetaRecord[Optional[ExpressionT]], Expression):
+class Record(MetaRecord[Optional[ExpressionT], Variable], Expression):
     # The Optional represent a expression like {val} instead of {val=val}
     @staticmethod
     def compare_items(
@@ -111,31 +111,31 @@ class Record(MetaRecord[Optional[ExpressionT]], Expression):
 
 class Selector(Expression):
     expression: ExpressionT
-    fields: list[str]
+    field: str
 
     def __init__(
-        self, expression: ExpressionT, fields: list[str], _range: Range
+        self, expression: ExpressionT, field: str, _range: Range
     ) -> None:
         self.expression = expression
-        self.fields = fields
+        self.field = field
         self._range = _range
 
     def compare(self, other: SST) -> bool:
         return (
             isinstance(other, Selector)
             and self.expression.compare(other.expression)
-            and self.fields == other.fields
+            and self.field == other.field
         )
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
         return (
             Group(expression_parens(settings, self.expression))
             + Text(".")
-            + Text(".".join(self.fields))
+            + Text(self.field)
         )
 
     def __repr__(self):
-        return f"Selector({self.expression},{self.fields},{self._range})"
+        return f"Selector({self.expression},{self.field},{self._range})"
 
 
 class AnnotatedExpression(Expression):
