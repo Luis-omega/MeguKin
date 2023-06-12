@@ -181,9 +181,9 @@ class MetaRecord(SST, Generic[T, T_MetaRecord]):
             case []:
                 return Text("{}")
             case [(name, _, value)]:
-                print("name is : ", self)
                 return (
-                    Text(f"{{{name.to_document(settings)}")
+                    Text("{")
+                    + name.to_document(settings)
                     + self.item_to_document(settings, value)
                     + Text("}")
                 )

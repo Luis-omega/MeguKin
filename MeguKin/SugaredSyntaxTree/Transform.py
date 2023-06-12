@@ -124,7 +124,7 @@ class ToSST(Transformer):
     ) -> tuple[Variable, Range, ExpressionT]:
         return (
             Variable.from_lark_token(variable),
-            token2Range(variable),
+            mergeRanges(token2Range(variable), expression._range),
             expression,
         )
 
@@ -136,12 +136,16 @@ class ToSST(Transformer):
     def expression_record_update(
         self, items: list[tuple[Variable, Range, ExpressionT]]
     ) -> RecordUpdate:
-        return RecordUpdate(items)  # ignore
+        return RecordUpdate(items)
 
     def expression_record_item(
         self, variable: Token, colon: Token, expression: ExpressionT
-    ) -> tuple[str, Range, ExpressionT]:
-        return (variable.value, token2Range(variable), expression)
+    ) -> tuple[Variable, Range, ExpressionT]:
+        return (
+            Variable.from_lark_token(variable),
+            mergeRanges(token2Range(variable), expression._range),
+            expression,
+        )
 
     def expression_record_item_layout(
         self,
@@ -153,7 +157,7 @@ class ToSST(Transformer):
     ) -> tuple[Variable, Range, ExpressionT]:
         return (
             Variable.from_lark_token(variable),
-            token2Range(variable),
+            mergeRanges(token2Range(variable), expression._range),
             expression,
         )
 
@@ -944,7 +948,6 @@ def tree2sugared(trees: list[Tree]) -> list[TopT]:
 def selectors_split(
     selectors: str, old_range: Range
 ) -> list[tuple[str, Range]]:
-    print("selectors_split got: ", selectors)
     list_selectors = selectors.split(".")
     intermediate_range: Range = old_range
     out: list[tuple[str, Range]] = []
