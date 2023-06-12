@@ -25,9 +25,10 @@ your own at all.
 """
 
 from inspect import signature
+import logging
 from typing import Dict, Optional
-
 from dataclasses import dataclass
+
 import lark
 from lark.grammar import NonTerminal, Terminal
 
@@ -52,6 +53,9 @@ from MeguKin.File import Range
 emptyRange = Range(0, 0, 0, 0, 0, 0)
 
 __all__ = ["from_lark"]
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 @dataclass
@@ -191,7 +195,7 @@ class LarkStrategy(st.SearchStrategy):
         self.__rule_labels = {}
 
     def do_draw(self, data):
-        print(80 * "-")
+        log.debug(40 * "-" + " START NEW GENERATION " + 40 * "-")
         state = DrawState(Nil(), [], 0, None)
         start = data.draw(self.start)
         self.draw_symbol(data, start, state)
@@ -206,7 +210,7 @@ class LarkStrategy(st.SearchStrategy):
             )
 
     def draw_symbol(self, data, symbol, draw_state):
-        print("draw_symbol: ", symbol)
+        log.debug(f"draw_symbol: {str(symbol)}")
         if isinstance(symbol, Terminal):
             try:
                 strategy = self.terminal_strategies[symbol.name]

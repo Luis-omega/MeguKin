@@ -65,7 +65,7 @@ def make_test2(example: SST, symbol: str):
     assert p1 == p2
 
 
-symbol_to_use = "top_variable_definition"
+symbol_to_use = "top_variable_declaration"
 lark_p = load_grammar(True, [symbol_to_use])
 
 
