@@ -1,6 +1,10 @@
-SPACES : /[ \n]/+
+SPACES : / /+
 
 %ignore SPACES
+
+IGNORE_LINEBREAKS : /\n/
+
+%ignore IGNORE_LINEBREAKS
 
 // Python re doesn't match "\n" by defect when using `.`
 COMMENT_REST_OF_LINE: /#[^\n]*/

@@ -58,11 +58,10 @@ __all__ = ["from_lark"]
 class DrawState:
     current_doc: DocumentT
     documents: list[DocumentT]
-    indent: int
+    indent: int = 0
     before: Optional[str] = None
 
     def append(self, value: str) -> None:
-        print(value)
         match value:
             case "LAYOUT_START":
                 self.documents.append(self.current_doc)
@@ -78,10 +77,7 @@ class DrawState:
                 self.indent = self.indent - 1
                 self.current_doc = self.current_doc + Text(" ") + Text(value)
             case _:
-                if "\n" in value:
-                    self.before = value
-                    return
-                elif " " in value:
+                if " " in value:
                     self.before = value
                     self.current_doc = self.current_doc + Text(" ")
                     return
@@ -109,6 +105,17 @@ def get_terminal_names(terminals, rules, ignore_names):
     for rule in rules:
         names |= {t.name for t in rule.expansion if isinstance(t, Terminal)}
     return names
+
+
+def get_strategy_for_terminal(t) -> st.SearchStrategy:
+    if (
+        t.name == "COMMENT_REST_OF_LINE"
+        or t.name == "IGNORE_LINEBREAKS"
+        or t.name == "SPACES"
+    ):
+        return st.just(" ")
+    else:
+        return st.from_regex(t.pattern.to_regexp(), fullmatch=True)
 
 
 class LarkStrategy(st.SearchStrategy):
@@ -154,8 +161,7 @@ class LarkStrategy(st.SearchStrategy):
         )
 
         self.terminal_strategies = {
-            t.name: st.from_regex(t.pattern.to_regexp(), fullmatch=True)
-            for t in terminals
+            t.name: get_strategy_for_terminal(t) for t in terminals
         }
         unknown_explicit = set(explicit) - get_terminal_names(
             terminals, rules, ignore_names
@@ -185,6 +191,7 @@ class LarkStrategy(st.SearchStrategy):
         self.__rule_labels = {}
 
     def do_draw(self, data):
+        print(80 * "-")
         state = DrawState(Nil(), [], 0, None)
         start = data.draw(self.start)
         self.draw_symbol(data, start, state)
@@ -199,6 +206,7 @@ class LarkStrategy(st.SearchStrategy):
             )
 
     def draw_symbol(self, data, symbol, draw_state):
+        print("draw_symbol: ", symbol)
         if isinstance(symbol, Terminal):
             try:
                 strategy = self.terminal_strategies[symbol.name]

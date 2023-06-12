@@ -70,7 +70,6 @@ lark_p = load_grammar(True, [symbol_to_use])
 
 
 def make_test3(p1: str, symbol: str):
-    print("argument passed: ", p1)
     parse_result = lark_p.parse(p1, symbol)
     print("first parser succes")
     result: SST = ToSST().transform(parse_result)
@@ -90,7 +89,7 @@ def test_expression_variable_megu(
     caplog,
     var: str,
 ):
-    pytest.skip()
+    print('generated string:"', var, '"')
     caplog.set_level(logging.INFO)
     symbol = symbol_to_use
     make_test3(var, symbol)
