@@ -1,0 +1,21 @@
+module Naturals where
+
+data Natural = Zero | Successor Natural
+
+addOne : Natural -> Natural 
+addOne = Successor
+
+addition : Natural -> Natural->Natural
+addition Zero m = m
+addition n Zero = n
+addition n (Successor m) = add (Successor n) m
+
+multiplicationAux : Natural->Natural -> Natural ->Natural
+multiplicationAux Zero m acc = acc
+multiplicationAux n Zero acc = acc
+multiplicationAux n (Successor m) acc = multiplicationAux n m (addition acc n)
+
+multiplication : Natural -> Natural->Natural
+multiplication n m = multiplicationAux n m 0
+
+

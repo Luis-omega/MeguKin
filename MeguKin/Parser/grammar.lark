@@ -331,7 +331,7 @@ top_variable_definition: (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_functio
   | (OPERATOR | VARIABLE_IDENTIFIER) [pattern_match_function_args] EQUAL LAYOUT_START expression LAYOUT_END -> top_variable_definition_layout
 
 top_data_type.2: DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL data_type_constructors
-  | DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL LAYOUT_START data_type_constructors_layout LAYOUT_END
+  | DATA (CAPITALIZED_IDENTIFIER | OPERATOR) [type_data_type_args] EQUAL LAYOUT_START data_type_constructors_layout LAYOUT_END -> top_data_type_layout
 
 top_type_synonym : TYPE CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL type_expression_inner 
   | TYPE CAPITALIZED_IDENTIFIER [type_data_type_args] EQUAL LAYOUT_START type_expression_inner LAYOUT_END

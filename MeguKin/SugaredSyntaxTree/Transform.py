@@ -649,7 +649,8 @@ class ToSST(Transformer):
     def data_type_constructors_layout(
         self, constructors: list[ConstructorDefinition]
     ) -> list[ConstructorDefinition]:
-        return constructors
+        # FIXME: why we need this?
+        return constructors[0]
 
     # ------------------ Types ------------------
 
@@ -909,6 +910,52 @@ class ToSST(Transformer):
             name.value, Function(pattern, expression, _range), _range
         )
 
+    def top_data_type(
+        self,
+        data: Token,
+        constructor_or_operator: Token,
+        maybe_args: Optional[list[TypeVariable]],
+        equal: Token,
+        constructors: list[ConstructorDefinition],
+    ) -> DataType:
+        name: Operator | ConstructorName
+        if constructor_or_operator.type == "OPERATOR":
+            name = Operator.from_lark_token(constructor_or_operator)
+        else:
+            name = ConstructorName.from_lark_token(constructor_or_operator)
+        if maybe_args is None:
+            maybe_args = []
+        return DataType(
+            name,
+            maybe_args,
+            constructors,
+            mergeRanges(token2Range(data), constructors[-1]._range),
+        )
+
+    def top_data_type_layout(
+        self,
+        data: Token,
+        constructor_or_operator: Token,
+        maybe_args: Optional[list[TypeVariable]],
+        equal: Token,
+        layout_start: Token,
+        constructors: list[ConstructorDefinition],
+        layout_end: Token,
+    ) -> DataType:
+        name: Operator | ConstructorName
+        if constructor_or_operator.type == "OPERATOR":
+            name = Operator.from_lark_token(constructor_or_operator)
+        else:
+            name = ConstructorName.from_lark_token(constructor_or_operator)
+        if maybe_args is None:
+            maybe_args = []
+        return DataType(
+            name,
+            maybe_args,
+            constructors,
+            mergeRanges(token2Range(data), constructors[-1]._range),
+        )
+
     # def top_data_type(
     #    self, data: Token, typeName: Token, eq, constructors: list[Constructor]
     # ) -> DataType:
@@ -924,14 +971,16 @@ class ToSST(Transformer):
         self,
         module: Token,
         name: Token,
-        exports: list[ExportNameT],
+        exports: Optional[list[ExportNameT]],
         where: Token,
-    ):
+    ) -> Exports:
         module_name = ExportModuleName.from_lark_token(name)
         if exports:
             _range = mergeRanges(module_name._range, exports[-1]._range)
         else:
             _range = module_name._range
+        if exports is None:
+            exports = []
         return Exports(_range, module_name, exports)
 
         # FIXME:

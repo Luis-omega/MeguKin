@@ -1,13 +1,15 @@
 from typing import Union, Optional, TypeVar
 from dataclasses import dataclass
 
+from MeguKin.File import Range
 from MeguKin.SugaredSyntaxTree.Expression import (
     ExpressionT,
     Function,
     Operator,
     Let,
+    ConstructorName,
 )
-from MeguKin.SugaredSyntaxTree.Type import TypeT
+from MeguKin.SugaredSyntaxTree.Type import TypeT, TypeVariable
 from MeguKin.SugaredSyntaxTree.SST import SST, MetaTop, compare_list
 from MeguKin.SugaredSyntaxTree.Module import (
     ExportNameT,
@@ -109,31 +111,76 @@ class ConstructorDefinition(MetaTop[list[TypeT]]):
         return compare_list(self.value, value2, compare_types)
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        doc: DocumentT = Nil()
-        for type_ in self.value:
+        if len(self.value) == 0:
+            return Text(self.name)
+
+        doc: DocumentT = self.value[0].to_document(settings)
+        # FIXME: we need to group types applied to types by parens
+        for type_ in self.value[1:]:
             new_doc = type_.to_document(settings)
             doc = doc + LineBreak() + new_doc
+        return Text(self.name) + Text(" ") + doc
+
+
+class DataType:
+    name: ConstructorName | Operator
+    arguments: list[TypeVariable]
+    constructors: list[ConstructorDefinition]
+
+    def __init__(
+        self,
+        name: ConstructorName | Operator,
+        arguments: list[TypeVariable],
+        constructors: list[ConstructorDefinition],
+        _range: Range,
+    ):
+        self.name = name
+        self.arguments = arguments
+        self.constructors = constructors
+        self._range = _range
+
+    def compare(self, other: SST) -> bool:
         return (
-            Text(self.name) + LineBreak() + parens(settings, maybe_indent(doc))
+            isinstance(other, type(self))
+            and self.name == other.name
+            and compare_list(
+                self.constructors, other.constructors, TypeVariable.compare
+            )
+            and compare_list(
+                self.constructors,
+                other.constructors,
+                ConstructorDefinition.compare,
+            )
         )
 
-
-class DataType(MetaTop[list[ConstructorDefinition]]):
-    def compare_value(self, value2: list[ConstructorDefinition]) -> bool:
-        return compare_list(self.value, value2, ConstructorDefinition.compare)
+    def __repr__(self):
+        return f"{type(self).__name__}({self.name},{self.arguments},{self.constructors},{self._range})"
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        doc: DocumentT = Nil()
-        for constructor in self.value:
-            new_doc = constructor.to_document(settings)
-            doc = doc + LineBreak() + Text("| ") + new_doc
-        return (
-            Text("data ")
-            + Text(self.name)
-            + LineBreak()
-            + Text("=")
-            + LineBreak()
-            + parens(settings, maybe_indent(doc))
+        doc_types: DocumentT = Nil()
+        new_doc: DocumentT
+        for type_variable in self.arguments:
+            new_doc = type_variable.to_document(settings)
+            doc_types = doc_types + LineBreak() + Text(" ") + new_doc
+
+        doc: DocumentT
+        if len(self.constructors) == 1:
+            doc = LineBreak() + self.constructors[0].to_document(settings)
+        elif len(self.constructors) == 0:
+            doc = Nil()
+        else:
+            doc = LineBreak() + self.constructors[0].to_document(settings)
+            for constructor in self.constructors[1:]:
+                new_doc = constructor.to_document(settings)
+                doc = doc + LineBreak() + Text("| ") + new_doc
+        return Text("data ") + Group(
+            Indent(
+                1,
+                self.name.to_document(settings)
+                + Group(LineBreak() + doc_types)
+                + Text("=")
+                + Group(Indent(1, doc)),
+            )
         )
 
 
