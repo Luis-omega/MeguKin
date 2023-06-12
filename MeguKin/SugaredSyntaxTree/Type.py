@@ -70,7 +70,9 @@ class TypeMeaninglessOperatorApplications(
         new_doc: DocumentT
         for item in self.applications[::-1]:
             if isinstance(item, TypeOperator):
-                new_doc = LineBreak() + item.to_document(settings) + Text(" ")
+                new_doc = (
+                    LineBreak() + item.to_document(settings) + Text(" ") + doc
+                )
                 doc = Group(new_doc)
             else:
                 new_doc = item.to_document(settings)

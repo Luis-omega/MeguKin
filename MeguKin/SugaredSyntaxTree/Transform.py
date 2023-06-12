@@ -303,7 +303,7 @@ class ToSST(Transformer):
         name = fields[0]
         expression: ExpressionT = Variable(prefixed, name, expression_range)
         for selector_field, selector_range in selectors_split(
-            fields[1:], expression._range
+            ".".join(fields[1:]), expression._range
         ):
             expression = Selector(
                 expression,
