@@ -59,10 +59,16 @@ class DuplicatedDeclarations(ModuleCorrectnessError):
     declarations: List[Declaration]
 
 
-# TODO: This is to find definitions not being contiguos
+# TODO: This is to find definitions not being contiguous
 # at top level, so we find in the module if there is
 # something between two defintions.
-def check_definitios_are_contiguos():
+def check_definitios_are_contiguous(
+    module: Module, _map: dict[str, list[Definition]]
+):
+    pass
+
+
+def group_module_definitions(module: Module) -> dict[str, list[Definition]]:
     pass
 
 
@@ -104,6 +110,12 @@ def group_module_declarations(
 
 
 def semantic_analysis(
-    desugared_trees: Module, modules: LoadedModules
-) -> list[AST]:
+    module: Module, modules: LoadedModules
+) -> list[DuplicatedDeclarations]:
+    declaration_maybe_problems = group_module_declarations(module)
+    declarations, maybe_declaration_problems = find_duplicated_declarations(
+        declaration_maybe_problems
+    )
+    if maybe_declaration_problems:
+        return maybe_declaration_problems
     pass

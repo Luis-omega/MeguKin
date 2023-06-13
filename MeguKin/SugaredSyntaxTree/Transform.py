@@ -972,8 +972,7 @@ class ToSST(Transformer):
             exports = []
         return Exports(_range, module_name, exports)
 
-        # FIXME:
-
+    # FIXME:
     def top(self, top_module: Exports, imports, *all_others) -> TopT:
         return Module(None, top_module, imports, [], [], list(all_others))
 
