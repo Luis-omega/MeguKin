@@ -19,3 +19,4 @@ multiplication : Natural -> Natural->Natural
 multiplication n m = multiplicationAux n m 0
 
 
+data Either a b =  Left a | Right b

@@ -226,9 +226,11 @@ pattern_match_constructor_identifier : CAPITALIZED_IDENTIFIER | PREFIXED_CAPITAL
 
 pattern_match_variable: VARIABLE_IDENTIFIER
 
+pattern_match_hole : HOLE
+
 pattern_match_literal: INT
 
-pattern_match_atom: pattern_match_literal| pattern_match_variable | pattern_match_constructor_identifier | parens{pattern_match}
+pattern_match_atom: pattern_match_literal| pattern_match_variable | pattern_match_constructor_identifier | pattern_match_hole | parens{pattern_match}
 
 pattern_match_constructor_application: pattern_match_constructor_identifier pattern_match_atom+
   | pattern_match_atom

@@ -6,6 +6,7 @@ from MeguKin.SugaredSyntaxTree.FreeVariables import (
 from MeguKin.SugaredSyntaxTree.SST import MetaRecord, MetaVar
 from MeguKin.Parser.Token import Token
 from MeguKin.SugaredSyntaxTree.Type import TypeVariable
+from MeguKin.SugaredSyntaxTree.PatternMatch import PatternMatchVariable
 from MeguKin.SugaredSyntaxTree.Expression import (
     ExpressionT,
     Variable,
@@ -50,6 +51,9 @@ var_y = make_var("y")
 var_z = make_var("z")
 var_w = make_var("w")
 var_t = make_var("t")
+pvar_x = PatternMatchVariable([], "x", empty_range)
+pvar_y = PatternMatchVariable([], "y", empty_range)
+pvar_z = PatternMatchVariable([], "z", empty_range)
 
 
 @pytest.mark.parametrize(
@@ -162,13 +166,40 @@ def test_expression_operators(expression, expected):
     make_test(expression, expected)
 
 
-# @pytest.mark.parametrize(
-#    "expression,expected",
-#    [
-#    (
-#        CaseCase(pattern,expression)
-#        , [var_x])
-#    ],
-# )
-# def test_expression_case_case(expression, expected):
-#    make_test(expression, expected)
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        (CaseCase(pvar_x, var_x), set()),
+        (CaseCase(pvar_x, var_y), {var_y}),
+        (
+            CaseCase(
+                pvar_x,
+                Application(var_x, var_y, empty_range),  # redundant?
+            ),
+            {var_y},
+        ),
+    ],
+)
+def test_expression_case_case(expression, expected):
+    make_test(expression, expected)
+
+
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        (
+            Case(var_z, [CaseCase(pvar_x, var_y)], empty_range),
+            {var_z, var_y},
+        ),
+        (
+            Case(
+                var_z,
+                [CaseCase(pvar_x, var_y), CaseCase(pvar_y, var_w)],
+                empty_range,
+            ),
+            {var_z, var_y, var_w},
+        ),
+    ],
+)
+def test_expression_case(expression, expected):
+    make_test(expression, expected)

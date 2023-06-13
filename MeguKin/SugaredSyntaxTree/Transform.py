@@ -34,6 +34,7 @@ from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchConstructor,
     PatternMatchLiteral,
     PatternMatchConstructorName,
+    PatternMatchHole,
 )
 from MeguKin.SugaredSyntaxTree.Top import (
     TopT,
@@ -586,6 +587,9 @@ class ToSST(Transformer):
     def pattern_match_variable(self, token: Token) -> PatternMatchVariable:
         return PatternMatchVariable.from_lark_token(token)
 
+    def pattern_match_hole(self, token: Token) -> PatternMatchHole:
+        return PatternMatchHole(token2Range(token))
+
     def pattern_match_literal(self, token: Token) -> PatternMatchLiteral:
         return PatternMatchLiteral(token)
 
@@ -955,17 +959,6 @@ class ToSST(Transformer):
             constructors,
             mergeRanges(token2Range(data), constructors[-1]._range),
         )
-
-    # def top_data_type(
-    #    self, data: Token, typeName: Token, eq, constructors: list[Constructor]
-    # ) -> DataType:
-    #    # well, tecnically the last token is the one with the biggest range,
-    #    # so, a mergeRanges between `data` and `constructors[-1]` must be enough.
-    #    _range = mergeRanges(
-    #        token2Range(data),
-    #        reduce(mergeRanges, [i._range for i in constructors]),
-    #    )
-    #    return DataType(typeName.value, constructors, _range)
 
     def top_module(
         self,

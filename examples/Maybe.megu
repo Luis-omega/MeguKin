@@ -1,0 +1,11 @@
+module MeguKin where 
+
+data Maybe a = Just a | Nothing
+
+map : forall a b . (a->b) -> Maybe a -> Maybe b
+map f (Just a) =  Just (f b)
+map _ x = x
+
+fromMaybe : forall a . a -> Maybe a -> a
+fromMaybe default Nothing = default
+fromMaybe _ (Just x) = x

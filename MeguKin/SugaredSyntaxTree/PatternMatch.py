@@ -1,5 +1,5 @@
 from typing import Union
-from MeguKin.File import mergeRanges
+from MeguKin.File import mergeRanges, Range
 from MeguKin.SugaredSyntaxTree.SST import (
     SST,
     compare_list,
@@ -21,6 +21,7 @@ PatternMatchT = Union[
     "PatternMatchConstructor",
     "PatternMatchLiteral",
     "PatternMatchConstructorName",
+    "PatternMatchHole",
 ]
 
 
@@ -34,6 +35,22 @@ class PatternMatchLiteral(MetaLiteral, PatternMatch):
 
 class PatternMatchVariable(PatternMatch, MetaVar):
     pass
+
+
+class PatternMatchHole(PatternMatch):
+    _range: Range
+
+    def __init__(self, _range: Range):
+        self._range = _range
+
+    def compare(self, other):
+        return type(self) == type(other)
+
+    def to_document(self, settings: DocumentSettings):
+        return Text("_")
+
+    def __repr__(self):
+        return f"PatternMatchHole{self._range}"
 
 
 class PatternMatchConstructor(PatternMatch):

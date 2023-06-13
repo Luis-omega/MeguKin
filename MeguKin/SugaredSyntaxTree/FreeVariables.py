@@ -12,6 +12,7 @@ from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchVariable,
     PatternMatchConstructor,
     PatternMatchConstructorName,
+    PatternMatchHole,
 )
 from MeguKin.SugaredSyntaxTree.Expression import (
     Variable,
@@ -57,6 +58,8 @@ def get_bound_variables(
 ) -> MeguKinShadowVariables | set[Variable]:
     match pattern:
         case PatternMatchLiteral():
+            return set()
+        case PatternMatchHole():
             return set()
         case PatternMatchVariable(prefix=prefix, name=name, _range=_range):
             return {Variable(prefix, name, _range)}
@@ -131,6 +134,17 @@ def get_expression_free_variables(
                     return inner_free
                 out = out.union(inner_free)
             return out
+        case CaseCase(
+            pattern=pattern,
+            expression=expression,
+        ):
+            maybe_bound = get_bound_variables(pattern)
+            if isinstance(maybe_bound, MeguKinShadowVariables):
+                return maybe_bound
+            maybe_free = get_expression_free_variables(expression)
+            if isinstance(maybe_free, MeguKinShadowVariables):
+                return maybe_free
+            return maybe_free - maybe_bound
     return set()
 
 
