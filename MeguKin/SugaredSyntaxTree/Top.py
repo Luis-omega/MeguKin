@@ -9,7 +9,7 @@ from MeguKin.SugaredSyntaxTree.Expression import (
     Let,
     ConstructorName,
 )
-from MeguKin.SugaredSyntaxTree.Type import TypeT, TypeVariable
+from MeguKin.SugaredSyntaxTree.Type import TypeT, TypeVariable, TypeApplication
 from MeguKin.SugaredSyntaxTree.SST import SST, MetaTop, compare_list
 from MeguKin.SugaredSyntaxTree.Module import (
     ExportNameT,
@@ -25,16 +25,18 @@ from MeguKin.Pretty import (
     parens,
     Nil,
     DocumentSettings,
-    maybe_indent,
     indent,
     AlwaysLineBreak,
     Indent,
+    list_to_document_with,
 )
 
 
 TopT = Union["Definition", "Declaration", "DataType", "Module", "Exports"]
 
 T = TypeVar("T")
+
+T_SST = TypeVar("T_SST", bound=SST)
 
 
 class Top(SST):
@@ -49,10 +51,7 @@ class Definition(MetaTop[ExpressionT], Top):
         name = Text(self.name)
         match self.value:
             case Function(patterns=patterns, expression=expression):
-                doc: DocumentT = Nil()
-                for pattern in patterns[::-1]:
-                    new_doc = pattern.to_document(settings)
-                    doc = new_doc + LineBreak() + doc
+                doc = list_to_document_with(patterns, LineBreak(), settings)
                 end_expression: DocumentT
                 if isinstance(expression, Operator):
                     end_expression = parens(
@@ -65,17 +64,26 @@ class Definition(MetaTop[ExpressionT], Top):
 
                 else:
                     end_expression = expression.to_document(settings)
-                return name + maybe_indent(
-                    Group(doc)
-                    + maybe_indent(
-                        Text("=") + LineBreak() + end_expression,
+                return name + Group(
+                    Indent(
+                        1,
+                        Group(LineBreak() + doc)
+                        + Group(
+                            Indent(
+                                1,
+                                Text("=") + LineBreak() + end_expression,
+                            )
+                        ),
                     ),
                 )
             case Operator():
-                return name + maybe_indent(
-                    Text("=")
-                    + LineBreak()
-                    + parens(settings, self.value.to_document(settings))
+                return name + Group(
+                    Indent(
+                        1,
+                        Text("=")
+                        + LineBreak()
+                        + parens(settings, self.value.to_document(settings)),
+                    )
                 )
             case Let():
                 return (
@@ -87,8 +95,13 @@ class Definition(MetaTop[ExpressionT], Top):
                 )
 
             case _:
-                return name + maybe_indent(
-                    Text("=") + LineBreak() + self.value.to_document(settings)
+                return name + Group(
+                    Indent(
+                        1,
+                        Text("=")
+                        + LineBreak()
+                        + self.value.to_document(settings),
+                    )
                 )
 
 
@@ -97,9 +110,14 @@ class Declaration(MetaTop[TypeT], Top):
         return self.value.compare(value2)
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        return Text(self.name) + maybe_indent(
-            Text(":")
-            + Group(Indent(1, LineBreak() + self.value.to_document(settings)))
+        return Text(self.name) + Group(
+            Indent(
+                1,
+                Text(":")
+                + Group(
+                    Indent(1, LineBreak() + self.value.to_document(settings))
+                ),
+            )
         )
 
 
@@ -115,9 +133,12 @@ class ConstructorDefinition(MetaTop[list[TypeT]]):
             return Text(self.name)
 
         doc: DocumentT = self.value[0].to_document(settings)
-        # FIXME: we need to group types applied to types by parens
         for type_ in self.value[1:]:
-            new_doc = type_.to_document(settings)
+            new_doc: DocumentT
+            if isinstance(type_, TypeApplication):
+                new_doc = parens(settings, type_.to_document(settings))
+            else:
+                new_doc = type_.to_document(settings)
             doc = doc + LineBreak() + new_doc
         return Text(self.name) + Text(" ") + doc
 
@@ -157,29 +178,25 @@ class DataType:
         return f"{type(self).__name__}({self.name},{self.arguments},{self.constructors},{self._range})"
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        doc_types: DocumentT = Nil()
-        new_doc: DocumentT
-        for type_variable in self.arguments:
-            new_doc = type_variable.to_document(settings)
-            doc_types = doc_types + LineBreak() + Text(" ") + new_doc
+        doc_types = list_to_document_with(self.arguments, LineBreak(), settings)
 
         doc: DocumentT
         if len(self.constructors) == 1:
-            doc = LineBreak() + self.constructors[0].to_document(settings)
-        elif len(self.constructors) == 0:
-            doc = Nil()
+            doc = self.constructors[0].to_document(settings)
         else:
-            doc = LineBreak() + self.constructors[0].to_document(settings)
-            for constructor in self.constructors[1:]:
-                new_doc = constructor.to_document(settings)
-                doc = doc + LineBreak() + Text("| ") + new_doc
+            doc = list_to_document_with(
+                self.constructors, LineBreak() + Text("| "), settings
+            )
         return Text("data ") + Group(
             Indent(
                 1,
                 self.name.to_document(settings)
-                + Group(LineBreak() + doc_types)
+                + Group(
+                    (LineBreak() + doc_types) if doc_types != Nil() else Nil()
+                )
+                + LineBreak()
                 + Text("=")
-                + Group(Indent(1, doc)),
+                + Group(Indent(1, LineBreak() + doc)),
             )
         )
 
@@ -275,7 +292,6 @@ class Module(Top):
 def list_to_document(lst: list[SST], settings: DocumentSettings) -> DocumentT:
     doc: DocumentT = Nil()
     for item in lst:
-        print(item)
         doc = doc + AlwaysLineBreak() + item.to_document(settings)
     return doc
 

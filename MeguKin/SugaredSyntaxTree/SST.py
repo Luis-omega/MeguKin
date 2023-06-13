@@ -6,9 +6,9 @@ from MeguKin.File import Range, token2Range, mergeRanges
 from MeguKin.Pretty import (
     DocumentT,
     Text,
-    MaybeIndent,
     DocumentSettings,
     parens,
+    ToDocument,
 )
 from MeguKin.Parser.Token import Token
 
@@ -20,7 +20,7 @@ class SSTDataClass:
     _range: Range
 
 
-class SST(ABC, SSTDataClass):
+class SST(ToDocument, SSTDataClass):
     """
     Abstract base class for Sugared Syntax Tree
     """
@@ -36,12 +36,6 @@ class SST(ABC, SSTDataClass):
     #    """
     #    Attempt to reconstruct the original code
     #    """
-
-    @abstractmethod
-    def to_document(self, settings: DocumentSettings) -> DocumentT:
-        """
-        Convert a object to Document for formatting
-        """
 
     def range2str(self) -> str:
         return repr(self._range)

@@ -597,7 +597,9 @@ class ToSST(Transformer):
         return value
 
     def pattern_match_constructor_application(
-        self, maybe_constructor: PatternMatchT, *arguments: PatternMatchT
+        self,
+        maybe_constructor: PatternMatchConstructorName,
+        *arguments: PatternMatchT,
     ) -> PatternMatchT:
         arguments_list = list(arguments)
         if len(arguments_list) == 0:
@@ -605,7 +607,7 @@ class ToSST(Transformer):
         else:
             # We can ignore error here thanks to the
             # grammar rule and the list len check
-            return PatternMatchConstructor(maybe_constructor, arguments)  # type: ignore
+            return PatternMatchConstructor(maybe_constructor, list(arguments))
 
     def pattern_match(self, pattern: PatternMatchT) -> PatternMatchT:
         return pattern
@@ -645,16 +647,10 @@ class ToSST(Transformer):
             acc = mergeRanges(acc, i._range)
         return ConstructorDefinition(name.value, realTypes, acc)
 
-    def data_type_constructors(
-        self, sep: list[ConstructorDefinition]
-    ) -> list[ConstructorDefinition]:
-        return sep
-
     def data_type_constructors_layout(
         self, constructors: list[ConstructorDefinition]
     ) -> list[ConstructorDefinition]:
-        # FIXME: why we need this?
-        return constructors[0]
+        return constructors
 
     # ------------------ Types ------------------
 

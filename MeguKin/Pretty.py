@@ -17,12 +17,13 @@ DocumentT = Union[
     "Text",
     "LineBreak",
     "Group",
-    "MaybeIndent",
     "NoSpaceLineBreak",
     "AlwaysLineBreak",
 ]
 
 SimpleDocumentT = Union["SimpleNil", "SimpleText", "SimpleIndent"]
+
+T_ToDocument = TypeVar("T_ToDocument", bound="ToDocument")
 
 
 @dataclass
@@ -99,12 +100,6 @@ class Group(Document):
     document: DocumentT
 
 
-@dataclass
-class MaybeIndent(Document):
-    level: int
-    document: DocumentT
-
-
 class SimpleDocument(ABC):
     pass
 
@@ -163,14 +158,6 @@ def fits(  # type:ignore
         case [*others, (i, Mode.Flat, Group(doc))]:
             others.append((i, Mode.Flat, doc))
             return fits(width, others)
-        case [*others, (i, m, MaybeIndent(_, doc))]:
-            others.append((i, Mode.Flat, doc))
-            return fits(width, others)
-        case [*others, (i, Mode.Flat, MaybeIndent(level, doc))]:
-            others.append((i, Mode.Flat, doc))
-            return fits(width, others)
-        case [*others, (i, Mode.Break, MaybeIndent())]:
-            return True  # impossible read before
 
 
 def format_inner(  # type:ignore
@@ -221,15 +208,6 @@ def format_inner(  # type:ignore
                 return format_inner(width, consumed, others)
         case [*others, (i, m, AlwaysLineBreak())]:
             return SimpleIndent(i, format_inner(width, i, others))
-        case [*others, (i, m, MaybeIndent(level, doc))]:
-            others2 = others.copy()
-            others2.append((i, Mode.Flat, doc))
-            if fits(width - consumed, others2):
-                others.append((i, Mode.Flat, doc))
-                return format_inner(width, consumed, others)
-            else:
-                others.append((i, Mode.Break, Indent(level, doc)))
-                return format_inner(width, consumed, others)
     log.debug("format_inner: Bad case reached")
 
 
@@ -248,7 +226,6 @@ def layout(settings: DocumentSettings, doc: SimpleDocumentT):
             rended_text = text
             return rended_text + layout(settings, doc2)
         case SimpleIndent(level, doc2):
-            print("To indent: ", level, doc2)
             return (
                 "\n" + (level * indentation_size) * " " + layout(settings, doc2)
             )
@@ -268,12 +245,24 @@ def pretty_as_console(doc: DocumentT) -> str:
 def parens(settings: DocumentSettings, doc: DocumentT):
     # the level of indentation came back to the initial at the end
     # so we can be sure the last parentheses behaves right.
-    return Text("(") + MaybeIndent(1, doc) + Text(")")
+    return Text("(") + Group(Indent(1, doc)) + Text(")")
 
 
 def indent(doc: DocumentT):
     return Indent(1, LineBreak() + doc)
 
 
-def maybe_indent(doc: DocumentT):
-    return MaybeIndent(1, LineBreak() + doc)
+def list_to_document_with(
+    lst: list[T_ToDocument], separator: DocumentT, settings: DocumentSettings
+) -> DocumentT:
+    doc: DocumentT = Nil()
+    new_doc: DocumentT
+    if lst:
+        doc = lst[0].to_document(settings)
+        for type_variable in lst[1:]:
+            new_doc = type_variable.to_document(settings)
+            doc = doc + separator + new_doc
+    else:
+        doc = Nil()
+
+    return doc

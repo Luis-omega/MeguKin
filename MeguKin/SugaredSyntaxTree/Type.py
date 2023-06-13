@@ -16,7 +16,6 @@ from MeguKin.Pretty import (
     parens,
     Nil,
     DocumentSettings,
-    maybe_indent,
     Indent,
     AlwaysLineBreak,
 )
@@ -61,7 +60,7 @@ class TypeRecord(MetaRecord[TypeT, TypeRecordField], Type):
         return item1.compare(item2)
 
     def item_to_document(self, settings: DocumentSettings, item: TypeT):
-        return Text(":") + maybe_indent(item.to_document(settings))
+        return Text(":") + Group(Indent(1, item.to_document(settings)))
 
 
 class TypeMeaninglessOperatorApplications(
@@ -134,7 +133,6 @@ class TypeArrow(Type):
         )
 
     def to_document(self, settings: DocumentSettings):
-        print("TO Document: ", self)
         match self.domain:
             case TypeArrow():
                 return (

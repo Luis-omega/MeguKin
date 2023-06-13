@@ -12,9 +12,9 @@ from MeguKin.Pretty import (
     parens,
     Nil,
     DocumentSettings,
-    maybe_indent,
     indent,
     AlwaysLineBreak,
+    Indent,
 )
 
 ImportNameT = Union[
@@ -62,7 +62,7 @@ class ImportType(SST):
             new_doc = constructor.to_document(settings)
             doc = doc + LineBreak() + Text(",") + new_doc
         return self.type_name.to_document(settings) + parens(
-            settings, indent(parens(settings, maybe_indent(doc)))
+            settings, indent(parens(settings, Group(Indent(1, doc))))
         )
 
     def __repr__(self):
@@ -112,7 +112,7 @@ class ImportModule(SST):
         return (
             Text("module ")
             + self.module_name.to_document(settings)
-            + parens(settings, indent(parens(settings, maybe_indent(doc))))
+            + parens(settings, indent(parens(settings, Group(Indent(1, doc)))))
         )
 
 
@@ -149,7 +149,7 @@ class ExportType(SST):
             new_doc = constructor.to_document(settings)
             doc = doc + LineBreak() + Text(",") + new_doc
         return self.type_name.to_document(settings) + parens(
-            settings, indent(parens(settings, maybe_indent(doc)))
+            settings, indent(parens(settings, Group(Indent(1, doc))))
         )
 
     def __repr__(self):

@@ -14,6 +14,7 @@ from MeguKin.Pretty import (
     DocumentSettings,
     Text,
     LineBreak,
+    list_to_document_with,
 )
 
 PatternMatchT = Union[
@@ -74,10 +75,9 @@ class PatternMatchConstructor(PatternMatch):
         )
 
     def to_document(self, settings: DocumentSettings) -> DocumentT:
-        doc: DocumentT = Nil()
-        for pattern in self.patterns[::-1]:
-            new_doc = pattern.to_document(settings)
-            doc = new_doc + LineBreak() + doc
+        doc = list_to_document_with(self.patterns, LineBreak(), settings)
+        if isinstance(doc, Nil):
+            return self.name.to_document(settings)
         return parens(
             settings, self.name.to_document(settings) + Text(" ") + doc
         )

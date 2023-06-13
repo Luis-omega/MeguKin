@@ -24,7 +24,6 @@ from MeguKin.Pretty import (
     Nil,
     DocumentSettings,
     AlwaysLineBreak,
-    maybe_indent,
     indent,
     Indent,
 )
@@ -275,7 +274,7 @@ class CaseCase(Expression):
         return (
             self.pattern.to_document(settings)
             + Text(" -> ")
-            + maybe_indent(self.expression.to_document(settings))
+            + Group(Indent(1, self.expression.to_document(settings)))
         )
 
     def __repr__(self):
@@ -346,10 +345,10 @@ class Function(Expression):
         return (
             Text("\\ ")
             + NoSpaceLineBreak()
-            + maybe_indent(doc)
+            + Group(Indent(1, doc))
             + LineBreak()
             + Text("->")
-            + maybe_indent(self.expression.to_document(settings))
+            + Group(Indent(1, self.expression.to_document(settings)))
         )
 
     def __repr__(self):
