@@ -8,7 +8,7 @@ from MeguKin.SugaredSyntaxTree.Top import (
     Declaration,
     Definition,
     DataType,
-    Module,
+    ParsedModule,
 )
 from MeguKin.SugaredSyntaxTree.PatternMatch import (
     PatternMatchT,
@@ -63,12 +63,14 @@ class DuplicatedDeclarations(ModuleCorrectnessError):
 # at top level, so we find in the module if there is
 # something between two defintions.
 def check_definitios_are_contiguous(
-    module: Module, _map: dict[str, list[Definition]]
+    module: ParsedModule, _map: dict[str, list[Definition]]
 ):
     pass
 
 
-def group_module_definitions(module: Module) -> dict[str, list[Definition]]:
+def group_module_definitions(
+    module: ParsedModule,
+) -> dict[str, list[Definition]]:
     pass
 
 
@@ -92,7 +94,7 @@ def find_duplicated_declarations(
 
 
 def group_module_declarations(
-    module: Module,
+    module: ParsedModule,
 ) -> dict[str, Declaration | DuplicatedDeclarations]:
     out_dict: dict[str, Declaration | DuplicatedDeclarations] = dict()
     for declaration in module.declarations:
@@ -110,7 +112,7 @@ def group_module_declarations(
 
 
 def semantic_analysis(
-    module: Module, modules: LoadedModules
+    module: ParsedModule, modules: LoadedModules
 ) -> list[DuplicatedDeclarations]:
     declaration_maybe_problems = group_module_declarations(module)
     declarations, maybe_declaration_problems = find_duplicated_declarations(

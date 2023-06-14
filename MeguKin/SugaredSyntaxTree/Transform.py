@@ -43,7 +43,7 @@ from MeguKin.SugaredSyntaxTree.Top import (
     DataType,
     ConstructorDefinition,
     Exports,
-    Module,
+    ParsedModule,
 )
 from MeguKin.SugaredSyntaxTree.Type import (
     TypeT,
@@ -974,7 +974,7 @@ class ToSST(Transformer):
 
     # FIXME:
     def top(self, top_module: Exports, imports, *all_others) -> TopT:
-        return Module(None, top_module, imports, [], [], list(all_others))
+        return ParsedModule(None, top_module, imports, [], [], list(all_others))
 
 
 def tree2sugared(trees: list[Tree]) -> list[TopT]:

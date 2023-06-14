@@ -2,7 +2,7 @@ from typing import Union, TypeVar, Optional
 from dataclasses import dataclass
 
 
-from MeguKin.SugaredSyntaxTree.Top import TopT, Module
+from MeguKin.SugaredSyntaxTree.Top import TopT, ParsedModule
 from MeguKin.SugaredSyntaxTree.SST import MetaVar
 from MeguKin.Error import MeguKinError
 from MeguKin.File import Range
@@ -148,5 +148,5 @@ def get_expression_free_variables(
     return set()
 
 
-def get_module_expression_free_variables(module: Module) -> list[MetaVar]:
+def get_module_expression_free_variables(module: ParsedModule) -> list[MetaVar]:
     pass

@@ -35,7 +35,7 @@ class SymbolResolution:
     def find_symbol_path_in_path(
         self, path: Path, splited: list[str]
     ) -> Optional[Path]:
-        """Try to find the symbol in the path"""
+        """Try to find the symbol in the path, internal"""
         if len(splited) == 0:
             return None
         candidate_path = build_path(splited)
@@ -65,6 +65,26 @@ class SymbolResolution:
                 self.solved_symbols[symbol] = search_result
             return CantResolveSymbol(symbol)
         return None
+
+    def query_symbol(
+        self, symbol: ImportModuleName
+    ) -> SymbolPath | CantResolveSymbol:
+        result = self.solve_symbols({symbol})
+        if result is None:
+            return self.solved_symbols[symbol]
+        else:
+            return result
+
+    def query_symbols(
+        self, symbols: set[ImportModuleName]
+    ) -> dict[ImportModuleName, SymbolPath] | CantResolveSymbol:
+        result = self.solve_symbols(symbols)
+        if result is None:
+            return dict(
+                (symbol, self.solved_symbols[symbol]) for symbol in symbols
+            )
+        else:
+            return result
 
 
 def build_path(splited: list[str]) -> Optional[Path]:

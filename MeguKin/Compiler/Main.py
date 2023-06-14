@@ -4,40 +4,16 @@ from argparse import ArgumentParser
 from MeguKin.Loggers import get_logger
 from MeguKin.Parser.Parser import (
     load_grammar,
-    parse,
     parse_string,
-    FileLoadError,
-    ParserError,
 )
 from MeguKin.Parser import Parser
 from MeguKin.Error import MeguKinError
 from MeguKin.File import FileInfo
-from MeguKin.ModuleLoad.Load import solve_modules_path, load_modules
-from MeguKin.ModuleLoad.Module import Module, ModuleLoadError
 from MeguKin.SugaredSyntaxTree.Transform import ToSST
 from MeguKin.Pretty import defaultSettings, pretty_as_console
 from pprint import pprint
 
 log = get_logger(__name__)
-
-
-def compile_module(
-    name: str, source_paths: list[Path]
-) -> MeguKinError | Module:
-    lark = load_grammar(False)
-    if isinstance(lark, MeguKinError):
-        print(lark)
-        return lark
-    # path_result = solve_modules_path([name], source_paths)
-    # if isinstance(path_result, ModuleLoadError):
-    #    print(ModuleLoadError)
-    #    return ModuleLoadError
-    module_result = load_modules([name], source_paths, lark)
-    if isinstance(module_result, ModuleLoadError):
-        return module_result
-    loaded, modules = module_result
-    module = modules[name]
-    return module
 
 
 def from_file(symbols: list[str], path: Path) -> None:

@@ -32,7 +32,7 @@ from MeguKin.Pretty import (
 )
 
 
-TopT = Union["Definition", "Declaration", "DataType", "Module", "Exports"]
+TopT = Union["Definition", "Declaration", "DataType", "ParsedModule", "Exports"]
 
 T = TypeVar("T")
 
@@ -246,7 +246,7 @@ class Exports(Top):
 
 
 @dataclass
-class Module(Top):
+class ParsedModule(Top):
     # The name is inside Exports
     exports: Exports
     imports: list[ImportModule]
@@ -259,7 +259,7 @@ class Module(Top):
             return i1.compare(i2)
 
         return (
-            isinstance(other, Module)
+            isinstance(other, ParsedModule)
             and self.exports.compare(other.exports)
             and compare_list(self.imports, other.imports, compare_imports)
             and compare_list(
@@ -286,7 +286,7 @@ class Module(Top):
 
     # FIXME:
     def __rep__(self):
-        return "Module"
+        return "ParsedModule"
 
 
 def list_to_document(lst: list[SST], settings: DocumentSettings) -> DocumentT:
