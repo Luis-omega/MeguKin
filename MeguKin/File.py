@@ -23,6 +23,10 @@ Range = NamedTuple(
 )
 
 
+class HasRange:
+    _range: Range
+
+
 def token2Range(token: Token) -> Range:
     # type: ignore
     return Range(
