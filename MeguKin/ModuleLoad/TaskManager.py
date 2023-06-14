@@ -65,40 +65,38 @@ def import2Export(i: ImportModuleName) -> ExportModuleName:
 
 
 def find_back_edge(
-    initial_edge: ExportModuleName,
+    initial_edges: list[ExportModuleName],
     arg_dict: dict[ExportModuleName, PendingToGetModules],
 ) -> Optional[tuple[ExportModuleName, ExportModuleName]]:
     visit_dict = init_depth_first_search_dic(arg_dict)
     visit_number: int = 0
 
-    def DFS(
-        vertex: tuple[ExportModuleName, PendingToGetModules], visit_number: int
-    ) -> tuple[int, Optional[tuple[ExportModuleName, ExportModuleName]]]:
-        visit_name, parsed_modules = vertex
+    normal_stack = initial_edges.copy()
+    while normal_stack:
         visit_number = visit_number + 1
-        visit_dict[visit_name] = NumberAndMark(visit_number, True)
-        for import_ in parsed_modules.parsed.imports:
+        current_vertex = normal_stack.pop()
+        visit_item = visit_dict[current_vertex]
+        visit_item.number = visit_number
+        visit_item.mark = True
+
+        pending_module = arg_dict[current_vertex]
+
+        for import_ in pending_module.parsed.imports:
             name = import2Export(import_.module_name)
-            if visit_dict[name] == 0:
-                visit_number, maybe_back_edge = DFS(
-                    (name, arg_dict[name]), visit_number
-                )
-                if maybe_back_edge is not None:
-                    return (visit_number, maybe_back_edge)
-            elif (
-                visit_dict[name].number > visit_dict[visit_name].number
-                or not visit_dict[name].mark
-            ):
+            child = visit_dict[name]
+            if child.number == 0:
+                normal_stack.append(name)
+            elif child.number > visit_item.number or not child.mark:
                 continue
             else:
-                return (visit_number, (visit_name, name))
-        visit_dict[visit_name].mark = False
-        return visit_number, None
+                return (current_vertex, name)
 
-    _, maybe_back_edge = DFS(
-        (initial_edge, arg_dict[initial_edge]), visit_number
-    )
-    return maybe_back_edge
+    return None
+
+
+# class ModuleTree:
+#    def find_symbol(MetaVar)->list[]:
+#        pass
 
 
 @dataclass
