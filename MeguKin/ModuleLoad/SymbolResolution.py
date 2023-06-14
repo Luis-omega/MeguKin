@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from MeguKin.SugaredSyntaxTree.Module import ImportModuleName
-from MeguKin.SugaredSyntaxTree.Top import Exports, Module
+from MeguKin.SugaredSyntaxTree.Top import Exports
 from MeguKin.Error import MeguKinError
 
 
