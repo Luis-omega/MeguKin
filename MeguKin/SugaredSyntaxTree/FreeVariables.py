@@ -145,6 +145,55 @@ def get_expression_free_variables(
             if isinstance(maybe_free, MeguKinShadowVariables):
                 return maybe_free
             return maybe_free - maybe_bound
+        case Case(expression=expression, cases=cases):
+            out2: MeguKinShadowVariables | set[
+                T_ExpressionVariables
+            ] = get_expression_free_variables(expression)
+            if isinstance(out2, MeguKinShadowVariables):
+                return out2
+            for exp in cases:
+                maybe_free = get_expression_free_variables(exp)
+                if isinstance(maybe_free, MeguKinShadowVariables):
+                    return maybe_free
+                out2 = out2.union(maybe_free)
+            return out2
+        case Function(patterns=patterns, expression=expression):
+            bounds: set[T_ExpressionVariables] = set()
+            for pattern in patterns:
+                maybe_bound = get_bound_variables(pattern)
+                if isinstance(maybe_bound, MeguKinShadowVariables):
+                    return maybe_bound
+                bounds = bounds.union(maybe_bound)
+            maybe_free = get_expression_free_variables(expression)
+            if isinstance(maybe_free, MeguKinShadowVariables):
+                return maybe_free
+            return maybe_free - bounds
+        case LetBinding(pattern=pattern, expression=expression):
+            maybe_bound = get_bound_variables(pattern)
+            if isinstance(maybe_bound, MeguKinShadowVariables):
+                return maybe_bound
+            maybe_free = get_expression_free_variables(expression)
+            if isinstance(maybe_free, MeguKinShadowVariables):
+                return maybe_free
+            return maybe_free - maybe_bound
+        case Let(bindings=bounds2, expression=expression):
+            all_bounds: set[T_ExpressionVariables] = set()
+            all_free: set[T_ExpressionVariables] = set()
+            for bound in bounds2:
+                maybe_bound = get_bound_variables(bound.pattern)
+                if isinstance(maybe_bound, MeguKinShadowVariables):
+                    return maybe_bound
+                all_bounds = all_bounds.union(maybe_bound)
+                maybe_free = get_expression_free_variables(bound)
+                if isinstance(maybe_free, MeguKinShadowVariables):
+                    return maybe_free
+                all_free = all_free.union(maybe_free)
+
+            maybe_free = get_expression_free_variables(expression)
+            if isinstance(maybe_free, MeguKinShadowVariables):
+                return maybe_free
+            return maybe_free.union(all_free) - all_bounds
+
     return set()
 
 

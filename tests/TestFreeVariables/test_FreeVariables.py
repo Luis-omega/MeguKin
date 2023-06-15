@@ -203,3 +203,36 @@ def test_expression_case_case(expression, expected):
 )
 def test_expression_case(expression, expected):
     make_test(expression, expected)
+
+
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        (
+            LetBinding(pvar_z, var_x),
+            {var_x},
+        ),
+        (LetBinding(pvar_z, var_z), set()),
+    ],
+)
+def test_expression_let_binding(expression, expected):
+    make_test(expression, expected)
+
+
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        (
+            Let([LetBinding(pvar_z, var_x)], var_y),
+            {var_x, var_y},
+        ),
+        (Let([LetBinding(pvar_z, var_z)], var_x), {var_x}),
+        (Let([LetBinding(pvar_y, var_z)], var_y), {var_z}),
+        (
+            Let([LetBinding(pvar_y, var_z), LetBinding(pvar_z, var_y)], var_y),
+            set(),
+        ),
+    ],
+)
+def test_expression_let(expression, expected):
+    make_test(expression, expected)

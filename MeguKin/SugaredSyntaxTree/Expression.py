@@ -46,6 +46,7 @@ ExpressionT = Union[
     "AnnotatedExpression",
     "ExpressionMeaninglessOperatorApplications",
     "Let",
+    "CaseCase",
 ]
 
 
