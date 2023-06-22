@@ -143,7 +143,7 @@ class ConstructorDefinition(MetaTop[list[TypeT]]):
         return Text(self.name) + Text(" ") + doc
 
 
-class DataType:
+class DataType(SST):
     name: ConstructorName | Operator
     arguments: list[TypeVariable]
     constructors: list[ConstructorDefinition]
@@ -277,7 +277,7 @@ class ParsedModule(Top):
         doc = (
             self.exports.to_document(settings)
             + AlwaysLineBreak()
-            # + self.imports: list[ImportModule]
+            + list_to_document(self.imports, settings)
             + list_to_document(self.data_types, settings)
             + list_to_document(self.declarations, settings)
             + list_to_document(self.definitions, settings)
@@ -285,11 +285,11 @@ class ParsedModule(Top):
         return doc
 
     # FIXME:
-    def __rep__(self):
+    def __repr_(self):
         return "ParsedModule"
 
 
-def list_to_document(lst: list[SST], settings: DocumentSettings) -> DocumentT:
+def list_to_document(lst: list[T_SST], settings: DocumentSettings) -> DocumentT:
     doc: DocumentT = Nil()
     for item in lst:
         doc = doc + AlwaysLineBreak() + item.to_document(settings)

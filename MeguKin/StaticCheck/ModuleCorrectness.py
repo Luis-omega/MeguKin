@@ -70,7 +70,7 @@ def check_definitios_are_contiguous(
 
 def group_module_definitions(
     module: ParsedModule,
-) -> dict[str, list[Definition]]:
+) -> dict[Variable | Operator, list[Definition]]:
     pass
 
 

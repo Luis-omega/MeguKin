@@ -13,6 +13,7 @@ from MeguKin.Pretty import (
 from MeguKin.Parser.Token import Token
 
 T = TypeVar("T")
+T_sst = TypeVar("T_sst", bound="SST")
 
 
 @dataclass
@@ -26,7 +27,7 @@ class SST(ToDocument, SSTDataClass):
     """
 
     @abstractmethod
-    def compare(self, other: "SST") -> bool:
+    def compare(self, other: T_sst) -> bool:
         """
         Compare for equality two SST without ranges
         """

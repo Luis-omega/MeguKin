@@ -1,14 +1,32 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
+from inspect import signature
+from typing import TypeVar, Generic, Union
 
-T = TypeVar("T", bound="Comparable")
-
-
-class Comparable(ABC):
-    @abstractmethod
-    def compare(self, other: T) -> bool:
-        pass
+from MeguKin.File import HasRange, Range
 
 
-def compare_list(l1: list[T], l2: list[T]) -> bool:
-    return len(l1) == len(l2) and all(i.compare(j) for i, j in zip(l1, l2))
+T = TypeVar("T", bound="HasRange")
+ComparableT = Union[int, str, list["ComparableT"], T]
+
+
+def compare(self, other: ComparableT) -> bool:
+    if isinstance(self, int) or isinstance(self, str):
+        return self == other
+    elif isinstance(self, list) and isinstance(other, list):
+        if len(self) != len(other):
+            return False
+        for i, j in zip(self, other):
+            if not compare(i, j):
+                return False
+        return True
+    else:
+        if type(self) != type(other):
+            return False
+        for arg in signature(self.__init__).parameters:
+            if arg == "_range":
+                pass
+            self_attrib = getattr(self, arg)
+            other_attrib = getattr(other, arg)
+            if not compare(self_attrib, other_attrib):
+                return False
+        return True

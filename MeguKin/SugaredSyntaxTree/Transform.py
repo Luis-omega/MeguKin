@@ -973,8 +973,39 @@ class ToSST(Transformer):
         return Exports(_range, module_name, exports)
 
     # FIXME:
-    def top(self, top_module: Exports, imports, *all_others) -> TopT:
-        return ParsedModule(None, top_module, imports, [], [], list(all_others))
+    def top(
+        self,
+        top_module: Exports,
+        imports: Optional[list[ImportModule]],
+        *all_others,
+    ) -> TopT:
+        definitions = []
+        declarations = []
+        data_types = []
+        last_range: Optional[Range] = None
+        for top_level in all_others:
+            match top_level:
+                case Definition():
+                    definitions.append(top_level)
+                case Declaration():
+                    declarations.append(top_level)
+                case DataType():
+                    data_types.append(top_level)
+                case _:
+                    pass
+            last_range = top_level._range
+        if last_range is None:
+            last_range = top_module._range
+        if imports is None:
+            imports = []
+        return ParsedModule(
+            mergeRanges(last_range, top_module._range),
+            top_module,
+            imports,
+            data_types,
+            declarations,
+            definitions,
+        )
 
 
 def tree2sugared(trees: list[Tree]) -> list[TopT]:
